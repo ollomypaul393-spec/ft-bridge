@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export function neonClient(databaseUrl, fetchImpl = (...a) => globalThis.fetch(...a)) {
+  databaseUrl = String(databaseUrl).trim().replace(/^psql\s+/, '').replace(/^['"]|['"]$/g, '').replace(/-pooler\./, '.'); // accept the pooled string or a pasted psql command too
   const u = new URL(databaseUrl);
   const endpoint = `https://${u.hostname}/sql`;
   return async function query(sql, params = []) {

@@ -31,6 +31,13 @@ test('saves to Neon and loads it back after a restart', async () => {
   assert.deepEqual(b.list('orders'), [{ ticket: '1117-1', payments: [{ amount: 5000 }], id: 'o1' }]);
 });
 
+test('accepts the pooled connection string and a pasted psql command', async () => {
+  const n = fakeNeon();
+  await new DocStore({ databaseUrl: "psql 'postgresql://u:p@ep-cool-1-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require'", fetchImpl: n.fetchImpl }).init();
+  assert.equal(n.seen[0].url, 'https://ep-cool-1.eu-central-1.aws.neon.tech/sql');
+  assert.equal(n.seen[0].conn, 'postgresql://u:p@ep-cool-1.eu-central-1.aws.neon.tech/neondb?sslmode=require');
+});
+
 test('database errors are reported, not hidden', async () => {
   const s = new DocStore({ databaseUrl: 'postgresql://u:p@h.neon.tech/db', fetchImpl: async () => new Response('{"message":"password authentication failed"}', { status: 400 }) });
   await assert.rejects(() => s.init(), /password authentication failed/);
