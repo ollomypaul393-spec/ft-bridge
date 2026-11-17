@@ -1,61 +1,62 @@
-# FT Bridge — Fast Technology Dry Cleaner
+# Fast Technology Dry Cleaner
 
-One small server that does three things for the shop app:
+The whole shop system on your own address, **https://fast-technology.onrender.com** — no Claude needed.
 
-| What | How | Cost |
+| Part | Where it runs | Cost |
 |---|---|---|
-| **Payment alerts** on the owner's phones & computers (even when everything is closed) | Push notifications through the **FT Alerts** app | Free |
-| **Daily report** at 21:20 | Email through **Brevo** | Free (300 emails/day) |
-| **Customer receipts** on WhatsApp | Meta WhatsApp Cloud API | Per message, billed by Meta |
+| The app (orders, customers, finance, staff, reports…) | Render (free web service) | Free |
+| Shop data | Neon Postgres | Free (0.5 GB) |
+| Sign-in | Google, once per device, then PIN | Free |
+| Payment & spot-check notifications | FT Alerts (web push) | Free |
+| Daily report at 21:20 | Brevo email, started by GitHub Actions | Free |
+| Customer receipts on WhatsApp | Meta WhatsApp Cloud API | Per message (Meta) |
 
-Secrets live **only in Render → Environment**. Nothing secret goes in GitHub or in the app.
+Secrets live **only in Render → Environment** — never in GitHub.
 
 ---
 
-## 1. Put the code on GitHub
-1. github.com → **New repository** → name `ft-bridge` → **Private** → Create.
-2. **Add file → Upload files** → drag in everything from this folder (not `.env`) → Commit.
-   GitHub checks every change automatically (Actions → CI).
+## 1. Neon (database)
+1. neon.tech → sign up → **Create project** (region: Europe / Frankfurt is closest to Render Frankfurt).
+2. **Connect** → copy the connection string (`postgresql://…neon.tech/neondb?sslmode=require`). This is `DATABASE_URL`.
+The app creates its table by itself.
 
-## 2. Make the push keys (once)
-On any computer with Node 20: `npm run keys` — or ask Claude to make them.
-You get `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`. Keep the private one secret.
+## 2. Google sign-in
+1. console.cloud.google.com → create a project “Fast Technology”.
+2. **APIs & Services → OAuth consent screen** → External → app name *Fast Technology*, your email → Save. Then **Publish app**.
+3. **Credentials → Create credentials → OAuth client ID** → *Web application*.
+   **Authorized JavaScript origins:** `https://fast-technology.onrender.com` (your real Render address).
+4. Copy the **Client ID** (`…apps.googleusercontent.com`). This is `GOOGLE_CLIENT_ID`.
 
-## 3. Deploy on Render
-1. render.com → **New → Blueprint** → choose the `ft-bridge` repo → Apply.
-2. Open the service → **Environment** and fill in:
-   - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (step 2), `VAPID_SUBJECT` = `mailto:you@yourmail`
-   - `BREVO_API_KEY`, `MAIL_FROM` (step 4)
-   - `WA_TOKEN`, `WA_PHONE_ID` (step 5, only for WhatsApp receipts)
-   - `APP_URL` = your shop app link
-   - `BRIDGE_KEY` and `ALERTS_KEY` are filled in by Render automatically — just copy them.
-3. Your address looks like `https://ft-bridge.onrender.com`. Check `https://ft-bridge.onrender.com/healthz` shows `ok`.
+## 3. Render
+1. render.com → **New → Blueprint** → repo **ft-bridge** → Blueprint name `fast-technology` → Apply.
+2. Fill in: `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `ADMIN_EMAILS` (your Gmail), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and later `BREVO_API_KEY`, `MAIL_FROM`, `WA_TOKEN`, `WA_PHONE_ID`. `SESSION_SECRET` and `ALERTS_KEY` are made by Render.
+3. When it shows **Live**, open your address and sign in with the Gmail in `ADMIN_EMAILS` — you are the Admin.
 
-The Blueprint uses Render's **Free** plan — no card, no cost. It sleeps after 15 minutes without use and wakes by itself on the next alert (the first alert after a quiet spell can take about a minute). The shop app keeps a copy of your device list, so devices are not lost when it sleeps or restarts.
+If Render gives a different address (e.g. `fast-technology-ab12.onrender.com`), use that in Google step 3 and set it in GitHub → Settings → Secrets and variables → Actions → **Variables** → `SITE_URL`.
 
-## 4. Brevo (daily report email)
-brevo.com → sign up → **Senders & IPs → Senders** → add and verify your shop email (this is `MAIL_FROM`)
-→ **SMTP & API → API keys → Generate** → put it in `BREVO_API_KEY`.
+## 4. Workers
+Admin → **Staff** → each worker → **Google email** (their Gmail) + **PIN** → Save.
+On the worker's phone: open the address → Sign in with Google (once) → type their PIN. From then on the phone opens straight to their PIN screen. Removing the email or unticking “Currently working here” removes their access immediately.
 
-## 5. Meta WhatsApp (customer receipts)
-developers.facebook.com → your app → WhatsApp → API setup. Use a **permanent System User token** (`WA_TOKEN`) and the **Phone number ID** (`WA_PHONE_ID`). Create the templates listed on the app's WhatsApp page and wait for approval.
+Tip: on phones use **Add to Home Screen** so it opens like an app.
 
-## 6. Connect it to Claude
-claude.ai → **Settings → Connectors → Add custom connector**
-- Name: **FT Bridge** (exactly)
-- URL: `https://ft-bridge.onrender.com/mcp/<BRIDGE_KEY>`
+## 5. Payment notifications (FT Alerts)
+App → **WhatsApp & alerts** → *Owner alerts* shows your FT Alerts link. Open it on each phone/computer → **Enable notifications** (iPhone: Share → Add to Home Screen first, then open FT Alerts from the home screen).
 
-## 7. Turn on FT Alerts on every phone and computer
-Open `https://ft-bridge.onrender.com/alerts/<ALERTS_KEY>` on each device (the app's **Settings → Owner alerts** shows this link and a QR code).
-- **Android / Windows / Mac:** tap **Enable notifications** → Allow. Optionally *Install app*.
-- **iPhone / iPad (iOS 16.4+):** Safari → **Share → Add to Home Screen**, open **FT Alerts** from the home screen, then tap **Enable notifications**.
-- Tap **Send a test notification** to check.
+## 6. Daily report email (Brevo)
+brevo.com → verify your sender email (`MAIL_FROM`) → **SMTP & API → API keys** → `BREVO_API_KEY`.
+In the app tick **Email me the full daily report**, enter the address, Save, then **Send today's report now** to test.
+GitHub Actions wakes the server at 21:20 every day (`.github/workflows/daily-report.yml`); the server sends at most one report a day.
 
-Treat the alerts link like a password: anyone with it can sign a device up for your alerts.
+## 7. WhatsApp receipts (Meta)
+Permanent System User token → `WA_TOKEN`; Phone number ID → `WA_PHONE_ID`; create the templates shown on the app's WhatsApp page.
 
-## Releasing updates
-Edit on GitHub → commit to `main` → Render redeploys by itself.
-Raising the `version` in `package.json` makes GitHub publish a new release (`v<version>`) automatically after the tests pass.
+## Free plan notes
+- The server sleeps after 15 minutes with nobody using it; the next visit takes up to a minute (the app shows “Starting the shop server…”). While the app is open it stays awake.
+- Render gives 750 free hours a month per account, shared by all free services.
 
-## Tools the app uses (MCP)
-`notify_owner`, `list_devices`, `send_email`, `send_template`, `send_text`, `check_setup`
+## Updates
+Every push to `main` is tested and deployed automatically. Raising `version` in `package.json` publishes a GitHub release.
+
+## Local run
+`npm test` · `cp .env.example .env` and fill it · `node --env-file=.env src/server.js`

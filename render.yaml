@@ -1,19 +1,35 @@
 # Render Blueprint — New → Blueprint → pick this GitHub repo.
+# One free web service runs the whole Fast Technology system: the app, sign-in, data sync,
+# payment notifications, WhatsApp receipts and the daily report email. Data lives in Neon (free).
 services:
   - type: web
-    name: ft-bridge
+    name: fast-technology      # gives https://fast-technology.onrender.com (if the name is free)
     runtime: node
-    plan: free             # no cost; sleeps after 15 min idle and wakes on the next call (~1 min)
+    plan: free                 # no cost; sleeps after 15 min idle and wakes on the next visit (~1 min)
     region: frankfurt
-    buildCommand: npm ci --omit=dev || npm install --omit=dev
+    buildCommand: npm install --omit=dev
     startCommand: npm start
     healthCheckPath: /healthz
-    autoDeploy: true       # every push / merged release on main redeploys
+    autoDeploy: true           # every push to main redeploys
     envVars:
       - key: NODE_VERSION
         value: "20"
-      - key: BRIDGE_KEY
-        generateValue: true   # Render creates a long random value; copy it into the connector URL
+      - key: DATABASE_URL
+        sync: false            # Neon → Connect → connection string (postgresql://…)
+      - key: GOOGLE_CLIENT_ID
+        sync: false            # Google Cloud → Credentials → OAuth client ID (Web)
+      - key: ADMIN_EMAILS
+        sync: false            # owner Gmail(s), comma separated — these open the app as Admin
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ALERTS_KEY
+        generateValue: true    # secret part of the FT Alerts link
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false            # mailto:your@email
       - key: BREVO_API_KEY
         sync: false
       - key: MAIL_FROM
@@ -26,13 +42,5 @@ services:
         sync: false
       - key: GRAPH_VERSION
         value: v21.0
-      - key: ALERTS_KEY
-        generateValue: true   # the secret part of the FT Alerts link you open on each phone / computer
-      - key: VAPID_PUBLIC_KEY
-        sync: false           # from "npm run keys"
-      - key: VAPID_PRIVATE_KEY
-        sync: false
-      - key: VAPID_SUBJECT
-        sync: false           # mailto:your@email
-      - key: APP_URL
-        sync: false           # your shop app link, opened when a notification is tapped
+      - key: SHOP_TZ
+        value: Africa/Dar_es_Salaam

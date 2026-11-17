@@ -1,7 +1,7 @@
 {
-  "name": "ft-bridge",
-  "version": "2.1.1",
-  "description": "Push notifications (FT Alerts), WhatsApp (Meta Cloud API) and email (Brevo) bridge for the Fast Technology Dry Cleaner app",
+  "name": "fast-technology",
+  "version": "3.0.0",
+  "description": "Fast Technology Dry Cleaner \u2014 shop management app, sign-in, live data (Neon), payment notifications, WhatsApp and email, on Render",
   "private": true,
   "type": "module",
   "main": "src/server.js",
