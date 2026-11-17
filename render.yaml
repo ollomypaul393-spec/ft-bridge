@@ -3,16 +3,12 @@ services:
   - type: web
     name: ft-bridge
     runtime: node
-    plan: starter          # "free" also works, but sleeps after 15 min idle (first alert can take ~1 min)
+    plan: free             # no cost; sleeps after 15 min idle and wakes on the next call (~1 min)
     region: frankfurt
     buildCommand: npm ci --omit=dev || npm install --omit=dev
     startCommand: npm start
     healthCheckPath: /healthz
     autoDeploy: true       # every push / merged release on main redeploys
-    disk:                  # remembers which phones/computers turned on FT Alerts (the app also keeps a backup copy)
-      name: ft-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "20"
@@ -40,5 +36,3 @@ services:
         sync: false           # mailto:your@email
       - key: APP_URL
         sync: false           # your shop app link, opened when a notification is tapped
-      - key: DATA_DIR
-        value: /var/data

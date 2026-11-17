@@ -31,7 +31,7 @@ You get `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`. Keep the private one secret.
    - `BRIDGE_KEY` and `ALERTS_KEY` are filled in by Render automatically — just copy them.
 3. Your address looks like `https://ft-bridge.onrender.com`. Check `https://ft-bridge.onrender.com/healthz` shows `ok`.
 
-The Blueprint uses the **Starter** plan with a 1 GB disk so it never sleeps and remembers devices. (The free plan sleeps after 15 minutes, which delays alerts.)
+The Blueprint uses Render's **Free** plan — no card, no cost. It sleeps after 15 minutes without use and wakes by itself on the next alert (the first alert after a quiet spell can take about a minute). The shop app keeps a copy of your device list, so devices are not lost when it sleeps or restarts.
 
 ## 4. Brevo (daily report email)
 brevo.com → sign up → **Senders & IPs → Senders** → add and verify your shop email (this is `MAIL_FROM`)

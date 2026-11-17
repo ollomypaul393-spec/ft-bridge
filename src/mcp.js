@@ -150,7 +150,7 @@ export async function notifyAll(env, { title, body = '', url = '', tag = '', urg
   }));
   addAlert({ title: payload.title, body: payload.body });
   if (!sent) throw new Error(errors[0] || 'No device accepted the notification');
-  return { ok: true, channel: 'push', sent, failed: errors.length, removed, devices: devices.length - removed.length };
+  return { ok: true, channel: 'push', sent, failed: errors.length, removed, devices: devices.length - removed.length, list: listDevices() };
 }
 
 export async function callTool(env, name, args = {}) {
