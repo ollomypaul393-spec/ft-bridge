@@ -1,8 +1,9 @@
 name: Release
-# Push a tag like v2.0.1 to publish a GitHub Release (Render deploys from main automatically).
+# Publishes a GitHub release automatically whenever package.json gets a new version on main.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -14,7 +15,13 @@ jobs:
         with:
           node-version: 20
       - run: npm test
-      - name: Create GitHub Release
+      - name: Create release if this version is new
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --title "FT Bridge $GITHUB_REF_NAME" --generate-notes
+        run: |
+          V="v$(node -p "require('./package.json').version")"
+          if gh release view "$V" >/dev/null 2>&1; then
+            echo "$V already released"
+          else
+            gh release create "$V" --target "$GITHUB_SHA" --title "FT Bridge $V" --generate-notes
+          fi

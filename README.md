@@ -55,7 +55,7 @@ Treat the alerts link like a password: anyone with it can sign a device up for y
 
 ## Releasing updates
 Edit on GitHub → commit to `main` → Render redeploys by itself.
-To mark a version: **Releases → Draft a new release → tag `v2.1.0`** (or push a tag); the Release workflow publishes it.
+Raising the `version` in `package.json` makes GitHub publish a new release (`v<version>`) automatically after the tests pass.
 
 ## Tools the app uses (MCP)
 `notify_owner`, `list_devices`, `send_email`, `send_template`, `send_text`, `check_setup`
