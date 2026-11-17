@@ -1,0 +1,20 @@
+name: Release
+# Push a tag like v2.0.1 to publish a GitHub Release (Render deploys from main automatically).
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm test
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "FT Bridge $GITHUB_REF_NAME" --generate-notes

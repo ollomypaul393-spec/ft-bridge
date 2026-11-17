@@ -1,0 +1,44 @@
+# Render Blueprint — New → Blueprint → pick this GitHub repo.
+services:
+  - type: web
+    name: ft-bridge
+    runtime: node
+    plan: starter          # "free" also works, but sleeps after 15 min idle (first alert can take ~1 min)
+    region: frankfurt
+    buildCommand: npm ci --omit=dev || npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true       # every push / merged release on main redeploys
+    disk:                  # remembers which phones/computers turned on FT Alerts (the app also keeps a backup copy)
+      name: ft-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: BRIDGE_KEY
+        generateValue: true   # Render creates a long random value; copy it into the connector URL
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: Fast Technology Dry Cleaner
+      - key: WA_TOKEN
+        sync: false
+      - key: WA_PHONE_ID
+        sync: false
+      - key: GRAPH_VERSION
+        value: v21.0
+      - key: ALERTS_KEY
+        generateValue: true   # the secret part of the FT Alerts link you open on each phone / computer
+      - key: VAPID_PUBLIC_KEY
+        sync: false           # from "npm run keys"
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false           # mailto:your@email
+      - key: APP_URL
+        sync: false           # your shop app link, opened when a notification is tapped
+      - key: DATA_DIR
+        value: /var/data

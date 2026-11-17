@@ -1,0 +1,16 @@
+{
+  "name": "ft-bridge",
+  "version": "2.1.0",
+  "description": "Push notifications (FT Alerts), WhatsApp (Meta Cloud API) and email (Brevo) bridge for the Fast Technology Dry Cleaner app",
+  "private": true,
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js",
+    "keys": "node scripts/keys.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
