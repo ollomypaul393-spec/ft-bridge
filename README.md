@@ -29,7 +29,7 @@ The app creates its table by itself.
 
 ## 3. Render
 1. render.com → **New → Blueprint** → repo **ft-bridge** → Blueprint name `fast-technology` → Apply.
-2. Fill in: `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `ADMIN_EMAILS` (your Gmail), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and later `BREVO_API_KEY`, `MAIL_FROM`, `WA_TOKEN`, `WA_PHONE_ID`. `SESSION_SECRET` and `ALERTS_KEY` are made by Render.
+2. Fill in: `DATABASE_URL`, `GOOGLE_CLIENT_ID`, `ADMIN_EMAILS` (every admin's Gmail, separated by commas), `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, and later `BREVO_API_KEY`, `MAIL_FROM`, `WA_TOKEN`, `WA_PHONE_ID`. `SESSION_SECRET` and `ALERTS_KEY` are made by Render.
 3. When it shows **Live**, open your address and sign in with the Gmail in `ADMIN_EMAILS` — you are the Admin.
 
 If Render gives a different address (e.g. `fast-technology-ab12.onrender.com`), use that in Google step 3 and set it in GitHub → Settings → Secrets and variables → Actions → **Variables** → `SITE_URL`.
@@ -45,7 +45,7 @@ App → **WhatsApp & alerts** → *Owner alerts* shows your FT Alerts link. Open
 
 ## 6. Daily report email (Brevo)
 brevo.com → verify your sender email (`MAIL_FROM`) → **SMTP & API → API keys** → `BREVO_API_KEY`.
-In the app tick **Email me the full daily report**, enter the address, Save, then **Send today's report now** to test.
+In the app tick **Email me the full daily report**, enter one or more addresses separated by commas (or leave it empty to send to every admin Gmail), Save, then **Send today's report now** to test. Each person gets their own copy.
 GitHub Actions wakes the server at 21:20 every day (`.github/workflows/daily-report.yml`); the server sends at most one report a day.
 
 ## 7. WhatsApp receipts (Meta)

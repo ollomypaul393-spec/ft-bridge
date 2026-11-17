@@ -13,7 +13,7 @@ import { callTool, notifyAll, handleRpc } from './mcp.js';
 import { addDevice, recentAlerts, useDocs } from './store.js';
 import { page, serviceWorker, manifest, ICON_SVG } from './alerts-app.js';
 import { DocStore, acquireLease } from './db.js';
-import { makeToken, readToken, verifyGoogle, roleOf, canRead, canReadColl, canWrite, canUseTool, validColl, validId } from './auth.js';
+import { adminEmails, makeToken, readToken, verifyGoogle, roleOf, canRead, canReadColl, canWrite, canUseTool, validColl, validId } from './auth.js';
 import { buildDailyReport, dayStr, localHM } from './report.js';
 
 const env = process.env;
@@ -92,21 +92,33 @@ setInterval(() => { for (const c of clients) c.res.write(': ping\n\n'); }, 20000
 
 /* ---------------- daily report ---------------- */
 let dailyBusy = false;
+/** Who gets the daily report: the addresses in Settings, or every admin Gmail (ADMIN_EMAILS) when that box is empty. */
+export function reportRecipients(s) {
+  const list = String(s.reportEmail || '').split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter((x) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+  return [...new Set(list.length ? list : adminEmails(env))].slice(0, 20);
+}
 export async function runDaily({ force = false, now = Date.now() } = {}) {
   if (dailyBusy) return { ok: false, skipped: 'busy' };
   const s = docs.get('settings', 'shop') || {};
   if (!force) {
-    if (!s.dailyEmail || !s.reportEmail) return { ok: true, skipped: 'daily email is off in Settings' };
+    if (!s.dailyEmail) return { ok: true, skipped: 'daily email is off in Settings' };
     if (localHM(now) < 21 * 60) return { ok: true, skipped: 'too early (sent at 21:20)' };
     if ((docs.get('_meta', 'daily') || {}).last === dayStr(now)) return { ok: true, skipped: 'already sent today' };
   }
-  if (!s.reportEmail) return { ok: false, error: 'No report email address in Settings' };
+  const to = reportRecipients(s);
+  if (!to.length) return { ok: false, error: 'No report email addresses in Settings (and no ADMIN_EMAILS)' };
   dailyBusy = true;
   try {
     const r = buildDailyReport(docs, now);
-    const out = await callTool(env, 'send_email', { to: s.reportEmail, subject: r.subject, html: r.html, text: r.text });
-    if (!force) await docs.put('_meta', 'daily', { last: r.date, at: Date.now() });
-    return { ok: true, sent: r.date, to: s.reportEmail, id: out.id };
+    // one email per person, so a wrong address never blocks the others
+    const sent = [], failed = [];
+    for (const email of to) {
+      try { await callTool(env, 'send_email', { to: email, subject: r.subject, html: r.html, text: r.text }); sent.push(email); }
+      catch (e) { failed.push(`${email}: ${e.message}`); }
+    }
+    if (!sent.length) throw new Error(failed[0] || 'Not sent');
+    if (!force) await docs.put('_meta', 'daily', { last: r.date, at: Date.now(), sent, failed });
+    return { ok: true, sent: r.date, to: sent.join(', '), count: sent.length, failed };
   } finally { dailyBusy = false; }
 }
 setInterval(() => { if (!dbError) runDaily().then((r) => r.sent && console.log('Daily report sent', r.sent)).catch((e) => console.error('Daily report failed:', e.message)); }, 60000).unref();

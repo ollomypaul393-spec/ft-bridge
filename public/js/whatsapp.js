@@ -146,7 +146,8 @@ VIEWS.whatsapp=()=>{
     ${d.payWa?`<label class="f">Owner WhatsApp number(s) — separate with commas<input type="text" data-f="wa" data-k="ownerPhones" value="${esc(d.ownerPhones||'')}" placeholder="0712 345 678, 0754 000 111"></label>`:''}
     <p class="small muted">Sent by whichever device records the payment. If it can't, any other open device with the connector retries every minute, so alerts aren't lost.</p></div>
    <div><label class="check"><input type="checkbox" data-f="wa" data-k="dailyEmail" ${d.dailyEmail?'checked':''}><span>Email me the full daily report at <b>21:20</b></span></label>
-    <label class="f">Report email address<input type="email" data-f="wa" data-k="reportEmail" value="${esc(d.reportEmail||'')}" placeholder="you@example.com"></label>
+    <label class="f">Send the report to — separate several emails with commas<input type="text" inputmode="email" autocomplete="off" data-f="wa" data-k="reportEmail" value="${esc(d.reportEmail||'')}" placeholder="owner@gmail.com, manager@gmail.com"></label>
+    <p class="small muted" style="margin:-6px 0 8px">Leave empty to send it to every admin Gmail. Each person gets their own copy.</p>
     <p class="small muted">Sent by email only (Brevo, free up to 300 a day) — no WhatsApp cost. Your server sends it every evening, even when nobody has the app open.</p>
     <button class="btn sm" data-act="dailyNow">Send today's report now</button></div></div>
    <button class="btn primary" data-act="waSave">Save</button></div>
@@ -158,7 +159,7 @@ IN.wa=e=>{waDraft[e.dataset.k]=e.type==='checkbox'?e.checked:e.value.trim();if([
 ONCHANGE.add('wa');
 ACT.waPvTab=a=>{pvKind=a.dataset.k;$('#formRoot').remove();render()};
 Object.assign(ACT,{
-  waSave:async a=>{if(waDraft.payWa&&!String(waDraft.ownerPhones||'').trim()){toast('Enter the owner WhatsApp number for WhatsApp payment alerts');return}if(waDraft.alertsLink&&!/^(https:\/\/|http:\/\/localhost).+\/alerts\/.{16,}$/.test(waDraft.alertsLink)){toast('The FT Alerts link should look like https://ft-bridge.onrender.com/alerts/…');return}a.disabled=true;const extra=waDraft.payAlerts&&!S().payAlerts?{payAlertSince:Date.now()}:{};try{await putSettings({...S(),...waDraft,...extra});waDraft=null;toast('Settings saved');render()}catch(e){a.disabled=false}},
+  waSave:async a=>{{const bad=String(waDraft.reportEmail||'').split(/[,;\s]+/).filter(Boolean).filter(x=>!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));if(bad.length){toast('Check this email: '+bad[0]);return}}if(waDraft.payWa&&!String(waDraft.ownerPhones||'').trim()){toast('Enter the owner WhatsApp number for WhatsApp payment alerts');return}if(waDraft.alertsLink&&!/^(https:\/\/|http:\/\/localhost).+\/alerts\/.{16,}$/.test(waDraft.alertsLink)){toast('The FT Alerts link should look like https://ft-bridge.onrender.com/alerts/…');return}a.disabled=true;const extra=waDraft.payAlerts&&!S().payAlerts?{payAlertSince:Date.now()}:{};try{await putSettings({...S(),...waDraft,...extra});waDraft=null;toast('Settings saved');render()}catch(e){a.disabled=false}},
   waCopyTpl:a=>{const t=WA_TPL[a.dataset.k];copyText(t[(waDraft||{}).waLang||'en']||t.en,'Template text copied')},
   waCheck:async a=>{const out=$('#waCheckOut');const m=await getMcp();if(!m){waTest='<span class="low">Cannot reach the server.</span>';out.innerHTML=waTest;return}
     a.disabled=true;out.textContent='Checking…';
@@ -236,8 +237,8 @@ async function runPayAlerts(){
 function kickPayAlerts(){clearTimeout(alertTimer);alertTimer=setTimeout(runPayAlerts,1200)}
 setInterval(runPayAlerts,60000);
 Object.assign(ACT,{
-  dailyNow:async a=>{const m=await getMcp();if(!m)return;if(!S().reportEmail){toast('Enter the report email address and Save first');return}a.disabled=true;
-    try{const r=await m.callTool(WA_SERVER,'send_daily_report',{});const p=r.payload||{};toast(p.ok?`✓ Report emailed to ${p.to}`:'Not sent — '+(p.error||'unknown error'))}catch(e){toast('Not sent — '+waErr(e))}a.disabled=false},
+  dailyNow:async a=>{const m=await getMcp();if(!m)return;a.disabled=true;
+    try{const r=await m.callTool(WA_SERVER,'send_daily_report',{});const p=r.payload||{};toast(p.ok?`✓ Report emailed to ${p.to}${p.failed&&p.failed.length?` · not sent to ${p.failed.length}: ${p.failed[0]}`:''}`:'Not sent — '+(p.error||'unknown error'))}catch(e){toast('Not sent — '+waErr(e))}a.disabled=false},
   alCopy:()=>copyText((waDraft&&waDraft.alertsLink)||S().alertsLink||'','FT Alerts link copied'),
   alDevices:async a=>{const m=await getMcp();if(!m){toast('Cannot reach the server — check your internet');return}a.disabled=true;const o=$('#alOut');o.textContent='Checking…';
     try{const l=await syncDevices(m);alOut=l.length?`<span class="yes">✓ ${l.length} device${l.length>1?'s':''} will get alerts:</span> ${l.map(d=>esc(d.label)).join(', ')}`:'<span class="low">No devices yet.</span> Open the FT Alerts link on your phone and tap Enable notifications.'}
