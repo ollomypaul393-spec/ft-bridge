@@ -41,6 +41,6 @@ services:
       - key: WA_PHONE_ID
         sync: false
       - key: GRAPH_VERSION
-        value: v21.0
+        value: v23.0
       - key: SHOP_TZ
         value: Africa/Dar_es_Salaam

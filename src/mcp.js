@@ -9,7 +9,7 @@
  *   MAIL_FROM_NAME  optional, default "Fast Technology Dry Cleaner"
  *   WA_TOKEN        Meta permanent System User token (whatsapp_business_messaging)
  *   WA_PHONE_ID     Meta "Phone number ID"
- *   GRAPH_VERSION   optional, default v21.0
+ *   GRAPH_VERSION   optional, default v23.0
  *   VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY   push notification keys (npm run keys)
  *   ALERTS_KEY      long random password for the FT Alerts app link (/alerts/<ALERTS_KEY>)
  *   APP_URL         optional: the shop app link to open when a notification is tapped
@@ -105,7 +105,7 @@ async function readJson(res) { try { return await res.json(); } catch { return {
 
 async function graph(env, path, init = {}) {
   if (!env.WA_TOKEN || !env.WA_PHONE_ID) throw new Error('WhatsApp is not configured on the bridge (WA_TOKEN / WA_PHONE_ID)');
-  const v = env.GRAPH_VERSION || 'v21.0';
+  const v = env.GRAPH_VERSION || 'v23.0';
   const res = await fetch(`https://graph.facebook.com/${v}/${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${env.WA_TOKEN}`, 'content-type': 'application/json', ...(init.headers || {}) }
