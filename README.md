@@ -1,6 +1,6 @@
 # Fast Technology Dry Cleaner
 
-The whole shop system on your own address, **https://fast-technology.onrender.com** — no Claude needed.
+The whole shop system on your own address, **https://ft-bridge.onrender.com** — no Claude needed.
 
 | Part | Where it runs | Cost |
 |---|---|---|
@@ -24,7 +24,7 @@ The app creates its table by itself.
 1. console.cloud.google.com → create a project “Fast Technology”.
 2. **APIs & Services → OAuth consent screen** → External → app name *Fast Technology*, your email → Save. Then **Publish app**.
 3. **Credentials → Create credentials → OAuth client ID** → *Web application*.
-   **Authorized JavaScript origins:** `https://fast-technology.onrender.com` (your real Render address).
+   **Authorized JavaScript origins:** `https://ft-bridge.onrender.com` (your real Render address).
 4. Copy the **Client ID** (`…apps.googleusercontent.com`). This is `GOOGLE_CLIENT_ID`.
 
 ## 3. Render
