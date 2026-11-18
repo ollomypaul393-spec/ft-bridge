@@ -359,7 +359,7 @@ function avMenuHtml(){
    ${it('#notifications','bell',`Notifications${nt?` <span class="cnt">${nt}</span>`:''}`)}
    ${ms?`<button class="avi" data-act="clock" data-id="${esc(ms.id)}" ${m.in&&m.out?'disabled':''}>${ic('inout')}<span>${!m.in?'Clock in':!m.out?'Clock out':'Clocked out'}</span></button>`:''}
    ${inAdmin()?it('#settings','settings','Shop settings')+it('#branches','branches','Branches'):it('#closeday','closeday','Close day')+it('#profile','profile','My profile')}
-   ${(window.FT_ME&&window.FT_ME.companies||[]).filter(c=>c.id!==(window.FT_CO||{}).id).map(c=>`<button class="avi" data-act="switchCo" data-co="${esc(c.id)}"><span class="cologo sm" style="--c1:${esc(c.theme.nav)};--c2:${esc(c.theme.accent)}">${esc(c.short)}</span><span>Switch to ${esc(c.name.replace(/ Dry Cleaner$/,''))}</span></button>`).join('')}
+   ${(window.FT_ME&&window.FT_ME.companies||[]).filter(c=>c.id!==(window.FT_CO||{}).id).map(c=>`<button class="avi" data-act="switchCo" data-co="${esc(c.id)}"><span class="cologo sm${c.logo?' img':''}" style="--c1:${esc(c.theme.nav)};--c2:${esc(c.theme.accent)}">${c.logo?`<img src="${esc(c.logo)}" alt="">`:esc(c.short)}</span><span>Switch to ${esc(c.brand||c.name)}</span></button>`).join('')}
    ${inAdmin()&&window.ftSignOut?`<button class="avi" data-act="ftSignOut">${ic('access')}<span>Sign out of this device</span></button>`:''}
    `;
 }

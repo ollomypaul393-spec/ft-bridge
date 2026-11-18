@@ -225,6 +225,8 @@ const dvOpen=d=>d.status!=='done'&&d.status!=='cancelled';
 const openIssues=()=>state.issues.filter(i=>i.status!=='resolved');
 /* Ticket numbers: FT0001, FT0002 … handed out by the server, so they never repeat (after FT9999 comes FT10000). */
 const coShort=()=>(window.FT_CO&&window.FT_CO.short)||'FT';
+/* company logo: the real picture when there is one, otherwise the letters */
+const coLogo=(big)=>{const c=window.FT_CO||{};if(big&&c.logoFull)return `<img class="logo-full" src="${esc(c.logoFull)}" alt="${esc(c.name||'')}">`;return c.logo?`<div class="logo logo-img${big?' big':''}"><img src="${esc(c.logo)}" alt="${esc(c.short)}"></div>`:`<div class="logo${big?' big':''}">${esc(coShort())}</div>`};
 async function newTicket(){
   if(window.ftNextTicket)return await window.ftNextTicket();
   const pre=coShort();let n=0;for(const o of state.orders){const m=new RegExp('^'+pre+'(\\d+)$').exec(o.ticket||'');if(m)n=Math.max(n,+m[1])}
@@ -355,7 +357,7 @@ function renderChrome(){
     const open=!collapsed.has(G.k);let gn=0,gr=false;G.items.forEach(k=>{const c=navCount(k);gn+=c.n;gr=gr||(c.red&&c.n>0)});
     return `<div class="grp ${open?'open':''} ${G===g?'cur':''}"><button class="grph" data-act="toggleGrp" data-g="${G.k}" aria-expanded="${open}">${ic(G.icon)}<span class="lbl">${G.label}</span>${!open&&gn?`<span class="gc">${cntHtml({n:gn,red:gr})}</span>`:''}${CHEV}</button>
       <div class="grpb">${G.items.map(k=>`<a href="#${k}" class="${k===r?'on':''} ${k==='new-order'?'cta':''}">${ic(PAGE_ICON[k])}<span class="pl">${PAGE_LABEL[k]}</span>${cntHtml(navCount(k))}</a>`).join('')}</div></div>`}).join('');
-  $('#nav').innerHTML=`<div class="brand"><div class="logo">${esc(coShort())}</div><div class="bn">${brandName()}<small>${inAdmin()?'Admin portal':'Worker portal'}</small></div></div>
+  $('#nav').innerHTML=`<div class="brand">${coLogo()}<div class="bn">${brandName()}<small>${inAdmin()?'Admin portal':'Worker portal'}</small></div></div>
     <div class="navtools"><a href="#" data-act="collapseAll">Collapse all</a><a href="#" data-act="expandAll">Expand all</a></div>
     ${grpHtml}
     <div class="spacer"></div>${opCard()}<div class="sync">${mode==='cloud'?'● Synced across devices':mode==='local'?'● Saved on this device':'Connecting…'}</div>`;
@@ -442,9 +444,9 @@ function lockLen(){const c=lockCtx();const cs=lockCands(c);if(cs.length===1&&cs[
 function lockHtml(){
   const c=lockCtx(),L=lockLen();const n=L||Math.max(4,lockPin.length);const cs=lockCands(c);
   let who,sub;
-  if(c.mode==='staff'){who=c.st?`<div class="lockav">${avatarHtml(c.st.id,c.st.name)}</div><h1>${esc(c.st.name)}</h1>`:`<div class="logo big">${esc(coShort())}</div><h1>${brandName()}</h1>`;sub=c.gone?'Your staff profile is no longer active. Ask your manager.':'Enter your PIN'}
+  if(c.mode==='staff'){who=c.st?`<div class="lockav">${avatarHtml(c.st.id,c.st.name)}</div><h1>${esc(c.st.name)}</h1>`:`${coLogo(true)}<h1>${brandName()}</h1>`;sub=c.gone?'Your staff profile is no longer active. Ask your manager.':'Enter your PIN'}
   else if(c.mode==='admin'){who=`<div class="lockav">${avatarHtml('admin','Admin')}</div><h1>Administrator</h1>`;sub=S().adminPinHash?'Enter the admin PIN':'No admin PIN set yet'}
-  else{who=`<div class="logo big">${esc(coShort())}</div><h1>${brandName()}</h1>`;sub=cs.length?'Welcome! Enter the PIN your manager gave you.<br><span style="font-size:12.5px">You only do this once on this account.</span>':'No staff PINs have been set up yet. Ask your manager.'}
+  else{who=window.FT_CO&&window.FT_CO.logoFull?coLogo(true):`${coLogo(true)}<h1>${brandName()}</h1>`;sub=cs.length?'Welcome! Enter the PIN your manager gave you.<br><span style="font-size:12.5px">You only do this once on this account.</span>':'No staff PINs have been set up yet. Ask your manager.'}
   const showGo=!L&&cs.length>0;
   return `<div class="lock"><div class="lockbox">
    <div class="lockclock"><div class="lc-time">${lcTime()}</div><div class="lc-date">${lcDate()}</div></div>

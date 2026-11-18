@@ -128,7 +128,9 @@ export async function runDaily({ force = false, now = Date.now(), co = COMPANIES
   dailyBusy.add(co.id);
   try {
     const r = buildDailyReport(D, now);
-    const html = brandify(r.html, co), text = brandify(r.text, co), subject = brandify(r.subject, co).replace(/^FT /, co.short + ' ');
+    let html0 = r.html;
+    if (co.logo) html0 = html0.replace(/<span style="display:inline-block;background:#c9a227[^>]*>FT<\/span>/, `<img src="${(env.APP_URL || '').replace(/\/$/, '')}${co.logo}" width="44" height="44" alt="${co.short}" style="vertical-align:middle;background:#fff;border-radius:10px;padding:2px;margin-right:10px">`);
+    const html = brandify(html0, co), text = brandify(r.text, co), subject = brandify(r.subject, co).replace(/^FT /, co.short + ' ');
     const sent = [], failed = [];
     for (const email of to) { // one email per person, so a wrong address never blocks the others
       try { await callTool(E, 'send_email', { to: email, subject, html, text }); sent.push(email); }

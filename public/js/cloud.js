@@ -15,23 +15,28 @@
   let coId = ''; try { coId = localStorage.getItem('ft-company') || ''; } catch (e) {}
   const coOf = (id) => COS.find((c) => c.id === id);
   function applyTheme(c) {
-    if (!c) return; window.FT_CO = c; const t = c.theme || {}, r = document.documentElement.style;
+    if (!c) return; window.FT_CO = c; const t = c.theme || {}, r = document.documentElement.style; document.documentElement.dataset.co = c.id;
     if (c.id !== 'ft') {
-      const v = { '--nav': t.nav, '--accent': t.accent, '--accent-lt': t.accentLt, '--accent-dk2': t.accentDk, '--gold': t.gold, '--accent-soft': t.soft, '--accent-dk': t.link, '--accent-ink': t.ink, '--bg': t.bg, '--line': t.line, '--nav-2': '#14335f', '--nav-3': '#1f4373' };
+      const v = { '--nav': t.nav, '--accent': t.accent, '--accent-lt': t.accentLt, '--accent-dk2': t.accentDk, '--gold': t.gold, '--accent-soft': t.soft, '--accent-dk': t.link, '--accent-ink': t.ink, '--bg': t.bg, '--line': t.line, '--nav-2': t.nav2 || t.nav, '--nav-3': t.nav3 || t.nav };
       for (const [k, val] of Object.entries(v)) if (val) r.setProperty(k, val);
     } else for (const k of ['--nav', '--accent', '--accent-lt', '--accent-dk2', '--gold', '--accent-soft', '--accent-dk', '--accent-ink', '--bg', '--line', '--nav-2', '--nav-3']) r.removeProperty(k);
     document.title = c.name;
     const m = document.querySelector('meta[name=theme-color]'); if (m && t.nav) m.content = t.nav;
+    // home-screen icon, tab icon and install name follow the company
+    const setHref = (sel, v) => { const l = document.querySelector(sel); if (l && v) l.href = v; };
+    setHref('link[rel=apple-touch-icon]', c.icon || '/icon.svg'); setHref('link[rel=manifest]', c.id === 'ft' ? '/manifest.webmanifest' : `/manifest-${c.id}.webmanifest`);
+    let fav = document.querySelector('link[rel=icon]'); if (!fav) { fav = document.createElement('link'); fav.rel = 'icon'; document.head.appendChild(fav); } fav.href = c.icon || '/icon.svg';
   }
   applyTheme(coOf(coId) || COS[0]);
-  const brandHtml = (c) => { const n = c.name.replace(/ Dry Cleaner$/, ''); return `<b>${esc(n)}</b>${n !== c.name ? ' Dry Cleaner' : ''}`; };
+  const brandHtml = (c) => { const n = c.brand || c.name; return `<b>${esc(n)}</b>${c.name.startsWith(n) ? esc(c.name.slice(n.length)) : ''}`; };
+  const cardHead = (c) => c.logoFull ? `<img class="ftauth-full" src="${esc(c.logoFull)}" alt="${esc(c.name)}">` : `<div class="ftauth-logo">${esc(c.short)}</div><h1>${brandHtml(c)}</h1>`;
   const authed = new Promise((r) => (authResolve = r));
   window.FT_STANDALONE = true;
 
   /* ---------------- sign-in screen ---------------- */
   const box = document.createElement('div');
   box.id = 'ftAuth';
-  box.innerHTML = `<div class="ftauth-card"><div class="ftauth-logo">${esc(window.FT_CO.short)}</div><h1>${brandHtml(window.FT_CO)}</h1><div id="ftAuthBody"><p class="ftauth-msg">Loading…</p></div></div>`;
+  box.innerHTML = `<div class="ftauth-card"><div id="ftAuthHead">${cardHead(window.FT_CO)}</div><div id="ftAuthBody"><p class="ftauth-msg">Loading…</p></div></div>`;
   const mount = () => { if (!box.isConnected) document.body.appendChild(box); };
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
   const body = (h) => { mount(); box.classList.remove('gone'); document.getElementById('ftAuthBody').innerHTML = h; };
@@ -88,8 +93,8 @@
   window.ftNextTicket = async () => (await api('/api/ticket', { method: 'POST' })).ticket;
   async function pickCompany() {
     let list = []; try { list = (await (await fetch('/api/me', { headers: { authorization: 'Bearer ' + token } })).json()).companies || []; } catch (e) {}
-    body(`<p class="ftauth-msg">Which shop do you want to open?</p><div class="copick">${list.map((c) => `<button class="coopt" data-co="${esc(c.id)}" style="--c1:${esc(c.theme.nav)};--c2:${esc(c.theme.accent)}"><span class="cologo">${esc(c.short)}</span><span><b>${esc(c.name)}</b><small>${c.role === 'admin' ? 'Admin' : 'Staff'}</small></span></button>`).join('')}</div><p class="ftauth-small">You can switch later from your profile picture menu.</p>`);
-    document.querySelectorAll('.coopt').forEach((b) => (b.onclick = () => { coId = b.dataset.co; try { localStorage.setItem('ft-company', coId); } catch (e) {} applyTheme(coOf(coId)); start(); }));
+    body(`<p class="ftauth-msg">Which shop do you want to open?</p><div class="copick">${list.map((c) => `<button class="coopt" data-co="${esc(c.id)}" style="--c1:${esc(c.theme.nav)};--c2:${esc(c.theme.accent)}"><span class="cologo${c.logo ? ' img' : ''}">${c.logo ? `<img src="${esc(c.logo)}" alt="">` : esc(c.short)}</span><span><b>${esc(c.name)}</b><small>${c.role === 'admin' ? 'Admin' : 'Staff'}</small></span></button>`).join('')}</div><p class="ftauth-small">You can switch later from your profile picture menu.</p>`);
+    document.querySelectorAll('.coopt').forEach((b) => (b.onclick = () => { coId = b.dataset.co; try { localStorage.setItem('ft-company', coId); } catch (e) {} applyTheme(coOf(coId)); const h = document.getElementById('ftAuthHead'); if (h) h.innerHTML = cardHead(coOf(coId)); start(); }));
   }
   window.ftSwitchCompany = (id) => { try { localStorage.setItem('ft-company', id); } catch (e) {} location.hash = ''; location.reload(); };
   window.ftSignOut = () => { if (confirm('Sign out of this device? You will need to sign in with Google again.')) signOut(); };

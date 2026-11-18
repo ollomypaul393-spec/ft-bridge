@@ -12,16 +12,18 @@ import { DocStore } from './db.js';
 
 export const COMPANIES = [
   {
-    id: 'ft', short: 'FT', name: 'Fast Technology Dry Cleaner', prefix: '', alerts: 'FT Alerts',
+    id: 'ft', short: 'FT', name: 'Fast Technology Dry Cleaner', brand: 'Fast Technology', tagline: '', prefix: '', alerts: 'FT Alerts', logo: '', logoFull: '', icon: '',
     theme: { nav: '#0e0e0e', accent: '#c9a227', accentLt: '#e6c65c', accentDk: '#b8921f', gold: '#d4af37', soft: '#f8f0d8', link: '#8a6a12', ink: '#111111', bg: '#f7f6f2', line: '#e8e4da' }
   },
   {
-    id: 'ht', short: 'HT', name: 'High Technology Dry Cleaner', prefix: 'ht__', alerts: 'HT Alerts',
-    theme: { nav: '#0b2545', accent: '#f47c20', accentLt: '#ff9d4d', accentDk: '#d9620c', gold: '#ff9d4d', soft: '#fff0e3', link: '#b4520a', ink: '#ffffff', bg: '#f4f7fb', line: '#e1e7f0' }
+    id: 'ht', short: 'HT', name: 'High Technology Laundry & Dry Cleaners', brand: 'High Technology', tagline: 'Your clothes, Our Care.', prefix: 'ht__', alerts: 'HT Alerts',
+    logo: '/brand/ht-mark.png', logoFull: '/brand/ht-logo.png', icon: '/brand/ht-icon.png',
+    // colours taken from the logo: blue #0368BA, orange #EE7C23
+    theme: { nav: '#02508f', nav2: '#0368ba', nav3: '#1c7fd0', accent: '#ee7c23', accentLt: '#ff9d4d', accentDk: '#c9620f', gold: '#ffa65c', soft: '#fff1e5', link: '#0368ba', ink: '#ffffff', bg: '#f3f7fc', line: '#dde7f3' }
   }
 ];
 export const byId = (id) => COMPANIES.find((c) => c.id === id) || null;
-export const publicInfo = (c) => ({ id: c.id, short: c.short, name: c.name, theme: c.theme });
+export const publicInfo = (c) => ({ id: c.id, short: c.short, name: c.name, brand: c.brand, tagline: c.tagline, logo: c.logo, logoFull: c.logoFull, icon: c.icon, theme: c.theme });
 
 /** Settings for one company: its own values where given, otherwise the shared ones. */
 export function envFor(env, c) {
@@ -52,10 +54,15 @@ export { DocStore };
 /** Re-colours and re-names a page written in Fast Technology's look for another company. */
 export function brandify(html, c) {
   if (!c || c.id === 'ft') return html;
-  const t = c.theme, F = COMPANIES[0].theme, base = c.name.replace(/ Dry Cleaner$/, '');
-  const pairs = [[F.nav, t.nav], [F.accentLt, t.accentLt], [F.accentDk, t.accentDk], [F.accent, t.accent], [F.gold, t.gold], [F.soft, t.soft], [F.link, t.link], ['#faf7ec', t.soft], ['#2a2414', '#14335f'], ['#3a3220', '#1f4373'], ['#6b5520', t.accentDk], ['#f1dfa4', t.accentLt],
-    ['FT Alerts', c.alerts], ['Fast Technology', base], ['>FT<', `>${c.short}<`], ["'FT'", `'${c.short}'`]];
+  const t = c.theme, F = COMPANIES[0].theme, base = c.brand || c.name;
   let out = String(html);
+  if (c.logo) { // real logo picture instead of the letters
+    out = out.split('<div class="logo">FT</div>').join(`<div class="logo logo-img"><img src="${c.logo}" alt="${c.short}"></div>`)
+      .replace('</style>', '.logo-img{background:#fff!important;padding:3px}.logo-img img{width:100%;height:100%;object-fit:contain;display:block}</style>');
+  }
+  if (c.icon) out = out.replace(/[^"'`\s(]*\/icon\.svg/g, c.icon).split("type: 'image/svg+xml'").join("type: 'image/png'").split('"image/svg+xml"').join('"image/png"');
+  const pairs = [['Fast Technology Dry Cleaner', c.name], [F.nav, t.nav], [F.accentLt, t.accentLt], [F.accentDk, t.accentDk], [F.accent, t.accent], [F.gold, t.gold], [F.soft, t.soft], [F.link, t.link], ['#faf7ec', t.soft], ['#2a2414', t.nav2 || t.nav], ['#3a3220', t.nav3 || t.nav], ['#6b5520', t.accentDk], ['#f1dfa4', t.accentLt],
+    ['FT Alerts', c.alerts], ['Fast Technology', base], ['>FT<', `>${c.short}<`], ["'FT'", `'${c.short}'`]];
   for (const [a, b] of pairs) out = out.split(a).join(b).split(a.toUpperCase()).join(b.toUpperCase ? b.toUpperCase() : b);
   return out;
 }

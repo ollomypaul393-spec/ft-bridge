@@ -30,6 +30,9 @@ test('admins and staff are per company', async () => {
 
 test('High Technology pages get its own name and colours', () => {
   const out = brandify('<b style="color:#d4af37">Fast Technology</b> <div>FT</div><i>>FT<</i> FT Alerts', COMPANIES[1]);
-  assert.match(out, /High Technology/); assert.match(out, /#ff9d4d/); assert.match(out, />HT</); assert.match(out, /HT Alerts/);
+  assert.match(out, /High Technology/); assert.match(out, /#ffa65c/); assert.match(out, /<img src="\/brand\/ht-mark.png"|>HT</); assert.match(out, /HT Alerts/);
   assert.doesNotMatch(out, /Fast Technology|#d4af37/);
+  const page = brandify('<style>.x{}</style><link rel="icon" href="/alerts/KEY-ht/icon.svg"><div class="logo">FT</div>', COMPANIES[1]);
+  assert.match(page, /href="\/brand\/ht-icon.png"/); assert.match(page, /<img src="\/brand\/ht-mark.png"/);
+  assert.equal(brandify('Fast Technology Dry Cleaner', COMPANIES[1]), 'High Technology Laundry & Dry Cleaners');
 });
