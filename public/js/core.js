@@ -292,7 +292,6 @@ function receiptText(o){
   if(o.accountId)out.push('Billed to account on invoice');else out.push(lr('Paid',num(c.paid)),lr('BALANCE',num(Math.max(0,c.bal))));
   out.push(L,`Pieces: ${c.pieces}`);if(o.staffName)out.push('Served by: '+o.staffName);
   if(o.notes)out.push(...wrap('Notes: '+o.notes,34));
-  if(s.loyalty.enabled&&o.customerId&&!o.accountId)out.push(`Loyalty points: ${custPoints(o.customerId)}`);
   if(s.receiptFooter)out.push('',...wrap(s.receiptFooter,34));
   if(trackLink(o))out.push('','Track your order:',trackLink(o));
   return out.join('\n');
