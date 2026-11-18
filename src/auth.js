@@ -12,8 +12,16 @@ import crypto from 'node:crypto';
 const b64u = (b) => Buffer.from(b).toString('base64url');
 const YEAR = 365 * 864e5;
 
+/** Same inbox = same person: case, Gmail dots and +tags don't matter. */
+export function sameEmail(e) {
+  let x = String(e || '').trim().toLowerCase().replace(/^mailto:/, '').replace(/^["'<]+|["'>.,;]+$/g, '');
+  const at = x.lastIndexOf('@'); if (at < 1) return x;
+  let local = x.slice(0, at), dom = x.slice(at + 1);
+  if (dom === 'gmail.com' || dom === 'googlemail.com') { local = local.split('+')[0].replace(/\./g, ''); dom = 'gmail.com'; }
+  return local + '@' + dom;
+}
 export function adminEmails(env) {
-  return String(env.ADMIN_EMAILS || '').split(/[,;\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean);
+  return String(env.ADMIN_EMAILS || '').split(/[,;\s]+/).map((x) => x.trim().toLowerCase().replace(/^["']|["']$/g, '')).filter((x) => x.includes('@'));
 }
 
 export function makeToken(env, user, now = Date.now()) {
@@ -47,10 +55,10 @@ export async function verifyGoogle(env, credential, fetchImpl = (...a) => global
 /** Works out what a signed-in Google account may do right now: 'admin', 'staff' or null. */
 export function roleOf(env, docs, user) {
   if (!user) return null;
-  const email = String(user.email || '').toLowerCase();
-  if (email && adminEmails(env).includes(email)) return 'admin';
+  const email = sameEmail(user.email);
+  if (email.includes('@') && adminEmails(env).some((a) => sameEmail(a) === email)) return 'admin';
   const staff = docs.list('staff').filter((s) => s.active !== false);
-  if (email && staff.some((s) => String(s.email || '').trim().toLowerCase() === email)) return 'staff';
+  if (email.includes('@') && staff.some((s) => s.email && sameEmail(s.email) === email)) return 'staff';
   const link = docs.get('links', user.uid || user.id);
   if (link && staff.some((s) => s.id === link.staffId)) return 'staff';
   return null;
