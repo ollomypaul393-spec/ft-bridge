@@ -522,3 +522,8 @@ body.locked main{padding:0}
 #gbtn{display:flex;justify-content:center;min-height:44px}
 .ftauth-spin{display:inline-block;width:14px;height:14px;border:2px solid #555;border-top-color:#d4af37;border-radius:50%;animation:ftspin .8s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes ftspin{to{transform:rotate(360deg)}}
+.rqr{text-align:center;margin:4px 0 10px}.rqr img{display:block;margin:0 auto 4px;border:1px solid var(--line);border-radius:12px;padding:6px;background:#fff}
+.phimg{display:block;width:100%;max-width:220px;margin:0 auto 6px;border-radius:8px;background:#fff}
+.scanbox{position:relative;background:#000;border-radius:14px;overflow:hidden;aspect-ratio:1/1;max-width:340px;margin:0 auto 8px}
+.scanbox video{width:100%;height:100%;object-fit:cover;display:block}
+.scanframe{position:absolute;inset:18%;border:3px solid #d4af37;border-radius:16px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}

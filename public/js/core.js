@@ -223,11 +223,19 @@ const lowStock=()=>state.supplies.filter(x=>(+x.qty||0)<=(+x.reorder||0));
 const attFor=d=>((state.attendance.find(a=>a.id===d)||{}).marks)||{};
 const dvOpen=d=>d.status!=='done'&&d.status!=='cancelled';
 const openIssues=()=>state.issues.filter(i=>i.status!=='resolved');
-function newTicket(){
-  const d=new Date();const base=`${pad(d.getMonth()+1)}${pad(d.getDate())}`;
-  for(let i=0;i<60;i++){const t=`${base}-${Math.floor(100+Math.random()*900)}`;if(!state.orders.some(o=>o.ticket===t))return t}
-  return base+'-'+uid().slice(-4).toUpperCase();
+/* Ticket numbers: FT0001, FT0002 … handed out by the server, so they never repeat (after FT9999 comes FT10000). */
+async function newTicket(){
+  if(window.ftNextTicket)return await window.ftNextTicket();
+  let n=0;for(const o of state.orders){const m=/^FT(\d+)$/.exec(o.ticket||'');if(m)n=Math.max(n,+m[1])}
+  return 'FT'+String(n+1).padStart(4,'0');
 }
+/* random key in the order's QR link (long, so nobody can guess other customers' orders) */
+function pubToken(){const a='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';const b=new Uint8Array(16);crypto.getRandomValues(b);return [...b].map(x=>a[x%a.length]).join('')}
+const siteUrl=()=>window.FT_STANDALONE?location.origin:'';
+const trackLink=o=>o&&o.pub&&siteUrl()?`${siteUrl()}/o/${o.pub}`:'';
+const qrImg=o=>o&&o.pub&&siteUrl()?`${siteUrl()}/qr/${o.pub}.png`:'';
+async function ensurePub(o){if(!o||o.pub||!window.FT_STANDALONE)return o;const n={...o,pub:pubToken()};try{await put('orders',n);return n}catch(e){return o}}
+const findByPub=p=>state.orders.find(o=>o.pub===p);
 function custStats(){
   const m={};for(const o of state.orders){if(!o.customerId||o.status==='cancelled')continue;const c=calc(o);const s=m[o.customerId]||(m[o.customerId]={orders:0,paid:0,spent:0,bal:0,last:0});s.orders++;s.paid+=c.paid;s.spent+=c.total;if(!o.accountId)s.bal+=Math.max(0,c.bal);s.last=Math.max(s.last,o.createdAt||0)}
   return m;
@@ -286,6 +294,7 @@ function receiptText(o){
   if(o.notes)out.push(...wrap('Notes: '+o.notes,34));
   if(s.loyalty.enabled&&o.customerId&&!o.accountId)out.push(`Loyalty points: ${custPoints(o.customerId)}`);
   if(s.receiptFooter)out.push('',...wrap(s.receiptFooter,34));
+  if(trackLink(o))out.push('','Track your order:',trackLink(o));
   return out.join('\n');
 }
 

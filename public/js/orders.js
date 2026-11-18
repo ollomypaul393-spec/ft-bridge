@@ -137,7 +137,7 @@ Object.assign(ACT,{
       const now=Date.now(),dep=acct?0:Math.max(0,+draft.deposit||0);
       const staffId=inAdmin()?(draft.staffId||''):(meStaff()?me:'');
       const items=draft.items.filter(i=>(+i.qty||0)>0).map(i=>({...i,garment:(i.garment||'').trim()||'Item'}));
-      const o={id:uid(),ticket:newTicket(),customerId:cust.id,customerName:name,phone,items,express:draft.express,expressPct:cd.expressPct,
+      const o={id:uid(),ticket:await newTicket(),pub:pubToken(),customerId:cust.id,customerName:name,phone,items,express:draft.express,expressPct:cd.expressPct,
         discount:cd.discount,acctDisc:cd.acctDisc,promoCode:cd.promoCode||'',promoDisc:cd.promoDisc,loyaltyDisc:cd.loyaltyDisc,pointsUsed:cd.pointsUsed,
         accountId:acct?acct.id:'',accountName:acct?acct.name:'',invoiceId:'',
         dueDate:draft.dueDate||addDays(todayStr(),s.turnaround),notes:draft.notes.trim(),status:'received',
@@ -172,7 +172,7 @@ function renderOrderList(){const l=ordFiltered(),el=$('#ordList');if(!el)return;
 VIEWS.orders=()=>{
   const all=state.orders;const n=f=>all.filter(f).length;
   const tabs=[['active',stagesOn()?'Active':'In shop',n(isActive)],...(stagesOn()?[['ready','Ready',n(isReady)]]:[]),['overdue','Overdue',n(isOverdue)],['owing','Owing',n(owes)],['corporate','Corporate',n(o=>!!o.accountId)],['collected','Collected',n(o=>o.status==='collected')],['cancelled','Cancelled',n(o=>o.status==='cancelled')],['all','All',all.length]];
-  return `<div class="toolbar"><input type="search" data-f="o-q" placeholder="Search ticket, name, phone or company…" value="${esc(ordF.q)}"><a class="btn primary" href="#new-order">+ New order</a></div>
+  return `<div class="toolbar"><input type="search" data-f="o-q" placeholder="Search ticket (FT0427), name, phone or company…" value="${esc(ordF.q)}"><button class="btn" data-act="scanOpen">📷 Scan</button><a class="btn primary" href="#new-order">+ New order</a></div>
   <div class="tabs">${tabs.map(([k,l,c])=>`<button class="tab ${ordF.s===k?'on':''}" data-act="ordTab" data-s="${k}">${l}<span class="n">${c}</span></button>`).join('')}</div>
   <div class="list" id="ordList"></div>`;
 };
@@ -211,6 +211,7 @@ MODALS.order=id=>{
 MODALS.receipt=id=>{
   const o=findOrder(id);if(!o)return null;const txt=receiptText(o);
   return `<div class="hd"><h2>Ticket <span class="mono">${esc(o.ticket)}</span></h2>${closeX}</div>
+  ${o.pub&&siteUrl()?`<div class="rqr"><img src="/qr/${esc(o.pub)}.svg" alt="QR code for ${esc(o.ticket)}" width="150" height="150"><div class="small">Customer scans to see the order · staff scan to open it</div></div>`:''}
   <pre class="receipt" id="rcpt">${esc(txt)}</pre>
   ${waOn()?`<div class="wabox"><span>${ic('wa')} WhatsApp receipt to ${esc(o.phone)} · <a href="#" data-act="waPreview" data-id="${esc(o.id)}" data-k="receipt">👁 Preview</a></span>${waStatusHtml(o,'receipt')}</div>`:''}
   <div class="row-actions" style="margin-top:14px;justify-content:center"><button class="btn primary" data-act="copyReceipt">Copy receipt</button>
@@ -354,3 +355,49 @@ Object.assign(ACT,{
       await put('issues',rec);closeModal();toast('Issue saved')}catch(e){a.disabled=false}},
   issueDel:async a=>{if(!arm(a,'Delete?'))return;try{await del('issues',modal.id);closeModal();toast('Deleted')}catch(e){}}
 });
+
+/* ================= Scan a ticket QR code ================= */
+let scanStream=null,scanTimer=null;
+function scanStop(){clearInterval(scanTimer);scanTimer=null;if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}}
+function openScanned(text){
+  const t=String(text||'').trim();let o=null;
+  const m=/\/o\/([A-Za-z0-9]{6,40})/.exec(t)||/^#?scan\/([A-Za-z0-9]{6,40})$/.exec(t);
+  if(m)o=findByPub(m[1]);
+  if(!o){const k=/\bFT\s?(\d{1,6})\b/i.exec(t);if(k){const tk='FT'+k[1].padStart(4,'0');o=state.orders.find(x=>String(x.ticket).toUpperCase()===tk)}}
+  if(!o)o=state.orders.find(x=>String(x.ticket).toUpperCase()===t.toUpperCase());
+  if(!o){toast('No order found for “'+t.slice(0,40)+'”');return false}
+  scanStop();closeModal();openModal('order',o.id);return true;
+}
+MODALS.scan=()=>`<div class="hd"><h2>📷 Scan a ticket</h2>${closeX}</div>
+  <div class="scanbox"><video id="scanVid" playsinline muted></video><div class="scanframe"></div></div>
+  <p class="small muted" id="scanMsg" style="text-align:center">Starting the camera…</p>
+  <div class="row-actions" style="gap:8px"><input id="scanIn" placeholder="Or type the ticket, e.g. FT0427" style="flex:1" autocomplete="off"><button class="btn primary" data-act="scanType">Open</button></div>`;
+Object.assign(ACT,{
+  scanOpen:async()=>{
+    openModal('scan');const msg=t=>{const e=$('#scanMsg');if(e)e.innerHTML=t};
+    if(!('BarcodeDetector' in window)||!navigator.mediaDevices){msg('This browser cannot scan here. Use your phone’s <b>camera app</b> to scan the QR code — it opens the order in this app. Or type the ticket number below.');return}
+    try{
+      const det=new BarcodeDetector({formats:['qr_code']});
+      scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+      const v=$('#scanVid');if(!v){scanStop();return}v.srcObject=scanStream;await v.play();msg('Point the camera at the QR code on the receipt.');
+      scanTimer=setInterval(async()=>{
+        if(!modal||modal.kind!=='scan'||!$('#scanVid')){scanStop();return}
+        try{const r=await det.detect(v);if(r&&r[0]&&r[0].rawValue){if(!openScanned(r[0].rawValue))msg('That code is not a ticket from this shop.')}}catch(e){}
+      },350);
+    }catch(e){scanStop();msg('Camera not available ('+esc(e.name||'blocked')+'). Allow the camera for this site, or type the ticket number below.')}
+  },
+  scanType:()=>{const v=($('#scanIn')||{}).value;if(v&&v.trim())openScanned(v)}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='scanIn'){e.preventDefault();ACT.scanType()}});
+/* a QR scanned with the phone's own camera lands on /#scan/<key> (via the order page) */
+function scanHash(){
+  const m=/^#scan\/([A-Za-z0-9]{6,40})$/.exec(location.hash);if(!m)return;const key=m[1];const until=Date.now()+5*60000;
+  const t=setInterval(()=>{
+    if(Date.now()>until){clearInterval(t);return}
+    if(!state.ready||isLocked())return; // wait for data and for the worker's PIN
+    clearInterval(t);const o=findByPub(key);
+    if(o){pendingModal=['order',o.id];if(location.hash==='#orders'){closeModal();render();openModal('order',o.id);pendingModal=null}else location.hash='#orders'}
+    else{toast('That order was not found');location.hash='#'+home()}
+  },400);
+}
+window.addEventListener('hashchange',scanHash);setTimeout(scanHash,0);

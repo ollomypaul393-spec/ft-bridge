@@ -30,7 +30,8 @@ export const TOOLS = [
         to: { type: 'string', description: 'Phone in international format, digits only, e.g. 255712345678' },
         template: { type: 'string', description: 'Approved template name' },
         language: { type: 'string', description: 'Template language code, e.g. en or sw', default: 'en' },
-        params: { type: 'array', items: { type: 'string' }, description: 'Values for {{1}}, {{2}}, … in order' }
+        params: { type: 'array', items: { type: 'string' }, description: 'Values for {{1}}, {{2}}, … in order' },
+        header_image: { type: 'string', description: 'Public https link of a picture for templates with an Image header (e.g. the order QR code)' }
       },
       required: ['to', 'template']
     },
@@ -166,7 +167,10 @@ export async function callTool(env, name, args = {}) {
         messaging_product: 'whatsapp', to, type: 'template',
         template: {
           name: String(args.template), language: { code: String(args.language || 'en') },
-          ...(params.length ? { components: [{ type: 'body', parameters: params.map((t) => ({ type: 'text', text: cleanParam(t) })) }] } : {})
+          ...((params.length || args.header_image) ? { components: [
+            ...(args.header_image ? [{ type: 'header', parameters: [{ type: 'image', image: { link: String(args.header_image) } }] }] : []),
+            ...(params.length ? [{ type: 'body', parameters: params.map((t) => ({ type: 'text', text: cleanParam(t) })) }] : [])
+          ] } : {})
         }
       })
     });

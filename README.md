@@ -48,8 +48,12 @@ brevo.com → verify your sender email (`MAIL_FROM`) → **SMTP & API → API ke
 In the app tick **Email me the full daily report**, enter one or more addresses separated by commas (or leave it empty to send to every admin Gmail), Save, then **Send today's report now** to test. Each person gets their own copy.
 GitHub Actions wakes the server at 21:20 every day (`.github/workflows/daily-report.yml`); the server sends at most one report a day.
 
+## Tickets and QR codes
+- Ticket numbers are **FT0001, FT0002 …**, handed out by the server so two phones can never get the same one (after FT9999 comes FT10000).
+- Every order has its own QR code (on the receipt and on the WhatsApp receipt). The customer scans it to see their order; staff scan it — with the **📷 Scan** button on Orders, or the phone's camera — to open the order in the app.
+
 ## 7. WhatsApp receipts (Meta)
-Permanent System User token → `WA_TOKEN`; Phone number ID → `WA_PHONE_ID`; create the templates shown on the app's WhatsApp page.
+Permanent System User token → `WA_TOKEN`; Phone number ID → `WA_PHONE_ID`; create the templates shown on the app's WhatsApp page. The `order_receipt` template has an **Image header** (the QR code) — when Meta asks for a sample picture, use `https://<your-address>/qr/sample.png`.
 
 ## Free plan notes
 - The server sleeps after 15 minutes with nobody using it; the next visit takes up to a minute (the app shows “Starting the shop server…”). While the app is open it stays awake.

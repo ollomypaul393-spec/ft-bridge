@@ -15,6 +15,8 @@ import { page, serviceWorker, manifest, ICON_SVG } from './alerts-app.js';
 import { DocStore, acquireLease } from './db.js';
 import { adminEmails, makeToken, readToken, verifyGoogle, roleOf, canRead, canReadColl, canWrite, canUseTool, validColl, validId } from './auth.js';
 import { buildDailyReport, dayStr, localHM } from './report.js';
+import { nextTicket, pubIndex, validPub, orderPage } from './orderpage.js';
+import { qrPng, qrSvg } from './qr.js';
 
 const env = process.env;
 const PORT = Number(env.PORT) || 10000;
@@ -29,8 +31,9 @@ for (const [k, why] of [['DATABASE_URL', 'data is NOT saved permanently (set you
 export const docs = new DocStore({ databaseUrl: env.DATABASE_URL || '', dataDir: env.DATA_DIR || '' });
 useDocs(docs);
 let dbError = 'Starting up…';
+let pubs = null;
 async function initDb() {
-  try { await docs.init(); dbError = ''; console.log(`Database ready (${docs.kind}), ${docs.collections().length} collections`); }
+  try { await docs.init(); pubs = pubIndex(docs); dbError = ''; console.log(`Database ready (${docs.kind}), ${docs.collections().length} collections`); }
   catch (e) { dbError = e.message; console.error('Database not reachable:', e.message, '— retrying in 15 s'); setTimeout(initDb, 15000); }
 }
 
@@ -146,6 +149,24 @@ export const server = http.createServer(async (req, res) => {
 
     if (p === '/cron/daily') { if (dbError) return send(res, 503, dbError); return send(res, 200, await runDaily()); }
 
+    if (p === '/qr/sample.png' || p === '/qr/sample.svg') { // sample picture for Meta's template review / the preview
+      const link = `${(env.APP_URL || 'https://' + req.headers.host).replace(/\/$/, '')}/o/sample`;
+      if (p.endsWith('.png')) { res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' }); return res.end(qrPng(link)); }
+      return send(res, 200, qrSvg(link), { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=86400' });
+    }
+    // QR codes and the customer's order page (public — the long random token is the key)
+    const qm = /^\/(o|qr)\/([A-Za-z0-9]+)(\.png|\.svg)?$/.exec(p);
+    if (qm && req.method === 'GET') {
+      if (dbError) return send(res, 503, 'The shop server is starting — please refresh in a minute.', { 'retry-after': '20' });
+      const o = validPub(qm[2]) && pubs.find(qm[2]);
+      if (!o) return send(res, 404, 'Order not found. Please check with the shop.');
+      const link = `${(env.APP_URL || 'https://' + req.headers.host).replace(/\/$/, '')}/o/${o.pub}`;
+      if (qm[1] === 'qr' && qm[3] === '.png') { res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=604800' }); return res.end(qrPng(link)); }
+      if (qm[1] === 'qr') return send(res, 200, qrSvg(link), { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=604800' });
+      if (!qm[3]) return send(res, 200, orderPage(o, docs.get('settings', 'shop') || {}, { qrSrc: `/qr/${o.pub}.svg` }), { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
+      return send(res, 404, 'Not found');
+    }
+
     if (p === '/config.js') return send(res, 200, `window.FT_CONFIG=${JSON.stringify({ googleClientId: env.GOOGLE_CLIENT_ID || '', shop: 'Fast Technology Dry Cleaner' })};`, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' });
 
     // optional: keep the Claude connector working if BRIDGE_KEY is set
@@ -193,6 +214,8 @@ export const server = http.createServer(async (req, res) => {
         if (req.method === 'DELETE') { await docs.del(coll, id); return send(res, 200, { ok: true }); }
         return send(res, 405, { error: 'Method not allowed' });
       }
+
+      if (p === '/api/ticket' && req.method === 'POST') { const t = nextTicket(docs); await t.save; return send(res, 200, { ticket: t.ticket }); }
 
       if (p === '/api/lease' && req.method === 'POST') { const b = await readJson(req); return send(res, 200, acquireLease(`${b.coll}/${b.id}`, String(b.holder || user.id), b.ttlMs)); }
 

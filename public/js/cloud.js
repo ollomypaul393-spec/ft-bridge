@@ -69,6 +69,7 @@
     if (me) { location.reload(); return; }
     showSignIn(note);
   }
+  window.ftNextTicket = async () => (await api('/api/ticket', { method: 'POST' })).ticket;
   window.ftSignOut = () => { if (confirm('Sign out of this device? You will need to sign in with Google again.')) signOut(); };
 
   async function start() {
