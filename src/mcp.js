@@ -136,27 +136,28 @@ const vapidOf = (env) => ({ publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAP
 
 export async function notifyAll(env, { title, body = '', url = '', tag = '', urgent = false, subscriptions = [] }) {
   if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) throw new Error('Notifications are not configured on the bridge (VAPID keys)');
-  mergeDevices(subscriptions);
-  const devices = listDevices();
-  if (!devices.length) throw new Error('No phone or computer has turned on FT Alerts yet');
+  const D = env.__docs || undefined;
+  mergeDevices(subscriptions, D);
+  const devices = listDevices(D);
+  if (!devices.length) throw new Error(`No phone or computer has turned on ${env.__alertsName || 'FT Alerts'} yet`);
   const payload = { title: String(title).slice(0, 120), body: String(body).slice(0, 400), url: url || env.APP_URL || '', tag: tag || undefined, urgent: !!urgent };
   let sent = 0; const removed = []; const errors = [];
   await Promise.all(devices.map(async (d) => {
     try {
       const r = await sendPush(d, payload, vapidOf(env));
       if (r.ok) sent++;
-      else if (r.gone) { removeDevice(d.endpoint); removed.push(d.endpoint); }
+      else if (r.gone) { removeDevice(d.endpoint, D); removed.push(d.endpoint); }
       else errors.push(`${d.label}: HTTP ${r.status}`);
     } catch (e) { errors.push(`${d.label}: ${e.message}`); }
   }));
-  addAlert({ title: payload.title, body: payload.body });
+  addAlert({ title: payload.title, body: payload.body }, D);
   if (!sent) throw new Error(errors[0] || 'No device accepted the notification');
-  return { ok: true, channel: 'push', sent, failed: errors.length, removed, devices: devices.length - removed.length, list: listDevices() };
+  return { ok: true, channel: 'push', sent, failed: errors.length, removed, devices: devices.length - removed.length, list: listDevices(D) };
 }
 
 export async function callTool(env, name, args = {}) {
   if (name === 'notify_owner') return notifyAll(env, args);
-  if (name === 'list_devices') return { ok: true, devices: listDevices() };
+  if (name === 'list_devices') return { ok: true, devices: listDevices(env.__docs || undefined) };
   if (name === 'send_template') {
     const to = cleanPhone(args.to);
     if (!args.template) throw new Error('template is required');
@@ -216,7 +217,7 @@ export async function callTool(env, name, args = {}) {
       const r = await brevo(env, 'account', { method: 'GET' });
       out.email = { ok: !!env.MAIL_FROM, from: env.MAIL_FROM || null, account: r.email || r.companyName || 'connected', ...(env.MAIL_FROM ? {} : { error: 'MAIL_FROM not set' }) };
     } catch (e) { out.email = { ok: false, error: e.message }; }
-    out.push = { ok: !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY), devices: listDevices().length };
+    out.push = { ok: !!(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY), devices: listDevices(env.__docs || undefined).length };
     out.ok = !!(out.whatsapp?.ok || out.email?.ok || out.push.ok);
     // Keep the older flat fields for the app's "Check connection" display
     if (out.whatsapp?.ok) Object.assign(out, { phone: out.whatsapp.phone, name: out.whatsapp.name, quality: out.whatsapp.quality });

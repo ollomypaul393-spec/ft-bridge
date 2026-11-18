@@ -172,7 +172,7 @@ function renderOrderList(){const l=ordFiltered(),el=$('#ordList');if(!el)return;
 VIEWS.orders=()=>{
   const all=state.orders;const n=f=>all.filter(f).length;
   const tabs=[['active',stagesOn()?'Active':'In shop',n(isActive)],...(stagesOn()?[['ready','Ready',n(isReady)]]:[]),['overdue','Overdue',n(isOverdue)],['owing','Owing',n(owes)],['corporate','Corporate',n(o=>!!o.accountId)],['collected','Collected',n(o=>o.status==='collected')],['cancelled','Cancelled',n(o=>o.status==='cancelled')],['all','All',all.length]];
-  return `<div class="toolbar"><input type="search" data-f="o-q" placeholder="Search ticket (FT0427), name, phone or company…" value="${esc(ordF.q)}"><button class="btn" data-act="scanOpen">📷 Scan</button><a class="btn primary" href="#new-order">+ New order</a></div>
+  return `<div class="toolbar"><input type="search" data-f="o-q" placeholder="Search ticket (${esc(coShort())}0427), name, phone or company…" value="${esc(ordF.q)}"><button class="btn" data-act="scanOpen">📷 Scan</button><a class="btn primary" href="#new-order">+ New order</a></div>
   <div class="tabs">${tabs.map(([k,l,c])=>`<button class="tab ${ordF.s===k?'on':''}" data-act="ordTab" data-s="${k}">${l}<span class="n">${c}</span></button>`).join('')}</div>
   <div class="list" id="ordList"></div>`;
 };
@@ -363,7 +363,7 @@ function openScanned(text){
   const t=String(text||'').trim();let o=null;
   const m=/\/o\/([A-Za-z0-9]{6,40})/.exec(t)||/^#?scan\/([A-Za-z0-9]{6,40})$/.exec(t);
   if(m)o=findByPub(m[1]);
-  if(!o){const k=/\bFT\s?(\d{1,6})\b/i.exec(t);if(k){const tk='FT'+k[1].padStart(4,'0');o=state.orders.find(x=>String(x.ticket).toUpperCase()===tk)}}
+  if(!o){const k=/\b([A-Z]{2})\s?(\d{1,6})\b/i.exec(t);if(k){const tk=k[1].toUpperCase()+k[2].padStart(4,'0');o=state.orders.find(x=>String(x.ticket).toUpperCase()===tk)}}
   if(!o)o=state.orders.find(x=>String(x.ticket).toUpperCase()===t.toUpperCase());
   if(!o){toast('No order found for “'+t.slice(0,40)+'”');return false}
   scanStop();closeModal();openModal('order',o.id);return true;
@@ -371,7 +371,7 @@ function openScanned(text){
 MODALS.scan=()=>`<div class="hd"><h2>📷 Scan a ticket</h2>${closeX}</div>
   <div class="scanbox"><video id="scanVid" playsinline muted></video><div class="scanframe"></div></div>
   <p class="small muted" id="scanMsg" style="text-align:center">Starting the camera…</p>
-  <div class="row-actions" style="gap:8px"><input id="scanIn" placeholder="Or type the ticket, e.g. FT0427" style="flex:1" autocomplete="off"><button class="btn primary" data-act="scanType">Open</button></div>`;
+  <div class="row-actions" style="gap:8px"><input id="scanIn" placeholder="Or type the ticket, e.g. ${esc(coShort())}0427" style="flex:1" autocomplete="off"><button class="btn primary" data-act="scanType">Open</button></div>`;
 Object.assign(ACT,{
   scanOpen:async()=>{
     openModal('scan');const msg=t=>{const e=$('#scanMsg');if(e)e.innerHTML=t};

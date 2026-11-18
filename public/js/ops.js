@@ -359,6 +359,7 @@ function avMenuHtml(){
    ${it('#notifications','bell',`Notifications${nt?` <span class="cnt">${nt}</span>`:''}`)}
    ${ms?`<button class="avi" data-act="clock" data-id="${esc(ms.id)}" ${m.in&&m.out?'disabled':''}>${ic('inout')}<span>${!m.in?'Clock in':!m.out?'Clock out':'Clocked out'}</span></button>`:''}
    ${inAdmin()?it('#settings','settings','Shop settings')+it('#branches','branches','Branches'):it('#closeday','closeday','Close day')+it('#profile','profile','My profile')}
+   ${(window.FT_ME&&window.FT_ME.companies||[]).filter(c=>c.id!==(window.FT_CO||{}).id).map(c=>`<button class="avi" data-act="switchCo" data-co="${esc(c.id)}"><span class="cologo sm" style="--c1:${esc(c.theme.nav)};--c2:${esc(c.theme.accent)}">${esc(c.short)}</span><span>Switch to ${esc(c.name.replace(/ Dry Cleaner$/,''))}</span></button>`).join('')}
    ${inAdmin()&&window.ftSignOut?`<button class="avi" data-act="ftSignOut">${ic('access')}<span>Sign out of this device</span></button>`:''}
    `;
 }
@@ -370,3 +371,5 @@ ACT.avMenu=(a,e)=>{e.stopPropagation&&e.stopPropagation();const p=$('#avPop');if
 ACT.pickPhoto=()=>{hideAvMenu();$('#photoIn').click()};
 async function fileToAvatar(f){const url=URL.createObjectURL(f);try{const img=new Image();await new Promise((ok,no)=>{img.onload=ok;img.onerror=no;img.src=url});const s=160,c=document.createElement('canvas');c.width=c.height=s;const x=c.getContext('2d');const m=Math.min(img.width,img.height);x.drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,s,s);return c.toDataURL('image/jpeg',.82)}finally{URL.revokeObjectURL(url)}}
 async function savePhoto(f){if(!f)return;if(!/^image\//.test(f.type)){toast('Choose a photo');return}try{const photo=await fileToAvatar(f);await put('profiles',{id:myKey(),photo,name:inAdmin()?'Admin':myName(),updatedAt:Date.now()});toast('Profile photo updated');render()}catch(e){toast("Couldn't use that photo")}}
+
+ACT.switchCo=a=>{if(window.ftSwitchCompany)window.ftSwitchCompany(a.dataset.co)};

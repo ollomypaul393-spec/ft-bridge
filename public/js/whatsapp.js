@@ -17,7 +17,7 @@ function waFill(kind,params,lang){const t=WA_TPL[kind];return (t[lang]||t.en).re
 function sampleOrder(){const T=todayStr();return {id:'sample',ticket:'FT0427',pub:'sample',customerName:'Asha Mwinyi',phone:'0712345678',items:[{garment:'Shirt / Blouse',service:'dry',qty:2,price:3000},{garment:'Suit (2-piece)',service:'dry',qty:1,price:12000}],payments:[{amount:10000,method:'Cash',at:Date.now()}],dueDate:addDays(T,3),createdAt:Date.now()}}
 function waPhone(kind,o,lang){
   const s=S();const params=waParams(kind,o);const txt=waFill(kind,params,lang);const foot=waFooter();const t=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  return `<div class="phone"><div class="phtop"><span class="phback">‹</span><span class="phav">FT</span><div class="phname"><b>${esc(s.shopName)} <span class="vtick" title="Business account">✔</span></b><small>Business account</small></div></div>
+  return `<div class="phone"><div class="phtop"><span class="phback">‹</span><span class="phav">${esc(coShort())}</span><div class="phname"><b>${esc(s.shopName)} <span class="vtick" title="Business account">✔</span></b><small>Business account</small></div></div>
    <div class="phchat"><div class="phday">TODAY</div><div class="phnote">🔒 This business uses a secure service from Meta to manage this chat.</div>
     <div class="phbub">${WA_TPL[kind].img&&S().waQr!==false&&o.pub&&siteUrl()?`<img class="phimg" src="/qr/${esc(o.pub)}.svg" alt="QR code">`:''}<div class="phtxt">${esc(txt)}</div>${foot?`<div class="phfoot">${esc(foot)}</div>`:''}<div class="phtime">${t}</div></div></div>
    <div class="phin"><span>Message</span></div></div>`;

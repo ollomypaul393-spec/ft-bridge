@@ -1,4 +1,12 @@
-# Fast Technology Dry Cleaner
+# Fast Technology & High Technology Dry Cleaners
+
+One app, two companies. Each has its own data, staff, tickets (FT0001… / HT0001…), colours (black & gold / navy, white & orange), WhatsApp number, notification app (FT Alerts / HT Alerts) and daily report. Someone who works for both chooses a shop after signing in and can switch from the profile-picture menu.
+
+| Render setting | Fast Technology | High Technology |
+|---|---|---|
+| Admins | `ADMIN_EMAILS` | `ADMIN_EMAILS_HT` (empty = same as Fast Technology) |
+| WhatsApp number | `WA_PHONE_ID` | `WA_PHONE_ID_HT` |
+| Alerts app link | `/alerts/<ALERTS_KEY>` | `/alerts/<ALERTS_KEY>-ht` |
 
 The whole shop system on your own address, **https://ft-bridge.onrender.com** — no Claude needed.
 

@@ -6,15 +6,15 @@
 import { dayStr } from './report.js';
 
 /* ---------- ticket numbers ---------- */
-export const fmtTicket = (n) => 'FT' + String(n).padStart(4, '0');
+export const fmtTicket = (n, short = 'FT') => short + String(n).padStart(4, '0');
 /** Hands out the next ticket number. Runs without awaiting before the number is reserved, so two
  *  phones saving at the same moment can never get the same number. */
-export function nextTicket(docs) {
+export function nextTicket(docs, short = 'FT') {
   const meta = docs.get('_meta', 'ticket') || {};
   let n = +meta.n || 0;
   const used = new Set(docs.list('orders').map((o) => o.ticket));
-  do { n++; } while (used.has(fmtTicket(n)));
-  const t = fmtTicket(n);
+  do { n++; } while (used.has(fmtTicket(n, short)));
+  const t = fmtTicket(n, short);
   return { ticket: t, save: docs.put('_meta', 'ticket', { n, at: Date.now() }) };
 }
 

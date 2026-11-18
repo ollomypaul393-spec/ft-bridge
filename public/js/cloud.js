@@ -6,20 +6,35 @@
    ===================================================================================== */
 (function () {
   const CFG = window.FT_CONFIG || {};
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const TK = 'ft-session';
   let token = ''; try { token = localStorage.getItem(TK) || ''; } catch (e) {}
   let me = null, authResolve;
+  /* ---------------- which company (Fast Technology / High Technology) ---------------- */
+  const COS = CFG.companies && CFG.companies.length ? CFG.companies : [{ id: 'ft', short: 'FT', name: 'Fast Technology Dry Cleaner', theme: {} }];
+  let coId = ''; try { coId = localStorage.getItem('ft-company') || ''; } catch (e) {}
+  const coOf = (id) => COS.find((c) => c.id === id);
+  function applyTheme(c) {
+    if (!c) return; window.FT_CO = c; const t = c.theme || {}, r = document.documentElement.style;
+    if (c.id !== 'ft') {
+      const v = { '--nav': t.nav, '--accent': t.accent, '--accent-lt': t.accentLt, '--accent-dk2': t.accentDk, '--gold': t.gold, '--accent-soft': t.soft, '--accent-dk': t.link, '--accent-ink': t.ink, '--bg': t.bg, '--line': t.line, '--nav-2': '#14335f', '--nav-3': '#1f4373' };
+      for (const [k, val] of Object.entries(v)) if (val) r.setProperty(k, val);
+    } else for (const k of ['--nav', '--accent', '--accent-lt', '--accent-dk2', '--gold', '--accent-soft', '--accent-dk', '--accent-ink', '--bg', '--line', '--nav-2', '--nav-3']) r.removeProperty(k);
+    document.title = c.name;
+    const m = document.querySelector('meta[name=theme-color]'); if (m && t.nav) m.content = t.nav;
+  }
+  applyTheme(coOf(coId) || COS[0]);
+  const brandHtml = (c) => { const n = c.name.replace(/ Dry Cleaner$/, ''); return `<b>${esc(n)}</b>${n !== c.name ? ' Dry Cleaner' : ''}`; };
   const authed = new Promise((r) => (authResolve = r));
   window.FT_STANDALONE = true;
 
   /* ---------------- sign-in screen ---------------- */
   const box = document.createElement('div');
   box.id = 'ftAuth';
-  box.innerHTML = `<div class="ftauth-card"><div class="ftauth-logo">FT</div><h1><b>Fast Technology</b> Dry Cleaner</h1><div id="ftAuthBody"><p class="ftauth-msg">Loading…</p></div></div>`;
+  box.innerHTML = `<div class="ftauth-card"><div class="ftauth-logo">${esc(window.FT_CO.short)}</div><h1>${brandHtml(window.FT_CO)}</h1><div id="ftAuthBody"><p class="ftauth-msg">Loading…</p></div></div>`;
   const mount = () => { if (!box.isConnected) document.body.appendChild(box); };
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
   const body = (h) => { mount(); box.classList.remove('gone'); document.getElementById('ftAuthBody').innerHTML = h; };
-  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   function showSignIn(note) {
     body(`<p class="ftauth-msg">${note ? `<span class="ftauth-err">${esc(note)}</span><br>` : ''}Sign in with your Google account. You only do this once on each phone or computer — after that, workers open the app with their PIN.</p><div id="gbtn"></div><p class="ftauth-small">Workers: the owner must first add your Gmail to your staff profile.</p>`);
@@ -55,10 +70,11 @@
   /* ---------------- talking to the server ---------------- */
   async function api(path, opts = {}) {
     let r;
-    try { r = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token } }); }
+    try { r = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token, 'x-company': coId } }); }
     catch (e) { throw { code: 'unavailable', message: 'No connection to the shop server. Check the internet.' }; }
     const j = await r.json().catch(() => ({}));
     if (r.status === 401) { signOut('Please sign in again.'); throw { code: 'unauthenticated', message: j.error }; }
+    if (r.status === 409 && j.error === 'company_changed') { try { localStorage.removeItem('ft-company'); } catch (e) {} location.reload(); throw { code: 'revoked', message: 'company changed' }; }
     if (r.status === 403 && j.error === 'not_allowed') { showDenied(j.email); throw { code: 'revoked', message: 'not allowed' }; }
     if (!r.ok) throw { code: r.status === 403 ? 'invalid_argument' : r.status === 503 ? 'unavailable' : 'server_error', message: j.error || 'HTTP ' + r.status, status: r.status };
     return j;
@@ -70,13 +86,24 @@
     showSignIn(note);
   }
   window.ftNextTicket = async () => (await api('/api/ticket', { method: 'POST' })).ticket;
+  async function pickCompany() {
+    let list = []; try { list = (await (await fetch('/api/me', { headers: { authorization: 'Bearer ' + token } })).json()).companies || []; } catch (e) {}
+    body(`<p class="ftauth-msg">Which shop do you want to open?</p><div class="copick">${list.map((c) => `<button class="coopt" data-co="${esc(c.id)}" style="--c1:${esc(c.theme.nav)};--c2:${esc(c.theme.accent)}"><span class="cologo">${esc(c.short)}</span><span><b>${esc(c.name)}</b><small>${c.role === 'admin' ? 'Admin' : 'Staff'}</small></span></button>`).join('')}</div><p class="ftauth-small">You can switch later from your profile picture menu.</p>`);
+    document.querySelectorAll('.coopt').forEach((b) => (b.onclick = () => { coId = b.dataset.co; try { localStorage.setItem('ft-company', coId); } catch (e) {} applyTheme(coOf(coId)); start(); }));
+  }
+  window.ftSwitchCompany = (id) => { try { localStorage.setItem('ft-company', id); } catch (e) {} location.hash = ''; location.reload(); };
   window.ftSignOut = () => { if (confirm('Sign out of this device? You will need to sign in with Google again.')) signOut(); };
 
   async function start() {
     if (!token) return showSignIn();
     for (let n = 0; ; n++) {
       try {
-        me = await api('/api/me'); window.FT_ME = me;
+        me = await api('/api/me');
+        let chosen = ''; try { chosen = localStorage.getItem('ft-company') || ''; } catch (e) {}
+        if (me.companies.length > 1 && !me.companies.some((c) => c.id === chosen)) { me = null; return pickCompany(); }
+        coId = me.company.id; try { localStorage.setItem('ft-company', coId); } catch (e) {}
+        applyTheme(me.company); window.FT_ME = me;
+        if (typeof DEF !== 'undefined') { DEF.shopName = me.company.name; if (DEF.branches && DEF.branches[0]) DEF.branches[0] = { ...DEF.branches[0], name: me.company.name.replace(/ Dry Cleaner$/, '') + ' HQ' }; }
         box.classList.add('gone'); openStream(); authResolve(); return;
       } catch (e) {
         if (e.code === 'unavailable' || e.status === 503 || e.status === 502) { showWaking(n); await new Promise((r) => setTimeout(r, 3000)); continue; }
@@ -103,7 +130,7 @@
   let es = null;
   function openStream() {
     if (es) es.close();
-    es = new EventSource('/api/stream?t=' + encodeURIComponent(token));
+    es = new EventSource('/api/stream?t=' + encodeURIComponent(token) + '&co=' + encodeURIComponent(coId));
     es.addEventListener('init', (ev) => {
       const j = JSON.parse(ev.data);
       for (const k of Object.keys(store)) delete store[k];
