@@ -188,7 +188,7 @@ export const server = http.createServer(async (req, res) => {
       const link = `${site(req)}/o/${o.pub}`;
       if (qm[1] === 'qr' && qm[3] === '.png') { res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=604800' }); return res.end(qrPng(link)); }
       if (qm[1] === 'qr') return send(res, 200, qrSvg(link), { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=604800' });
-      if (!qm[3]) return send(res, 200, brandify(orderPage(o, scopes.get(co.id).get('settings', 'shop') || {}, { qrSrc: `/qr/${o.pub}.svg`, company: co.id }), co), { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
+      if (!qm[3]) return send(res, 200, brandify(orderPage(o, { shopName: co.name, ...(scopes.get(co.id).get('settings', 'shop') || {}) }, { qrSrc: `/qr/${o.pub}.svg`, tagline: co.tagline }), co), { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
       return send(res, 404, 'Not found');
     }
 

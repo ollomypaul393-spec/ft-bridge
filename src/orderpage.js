@@ -47,7 +47,7 @@ export function orderTotals(o) {
 const DEF_SVC = { dry: 'Dry clean', wash: 'Wash', iron: 'Iron', fee: 'Service fee' };
 const niceDate = (d) => { try { return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); } catch { return d; } };
 
-export function orderPage(o, s = {}, { qrSrc = '' } = {}) {
+export function orderPage(o, s = {}, { qrSrc = '', tagline = '' } = {}) {
   const cur = s.currency || 'TSh';
   const money = (n) => `${cur} ${Math.round(+n || 0).toLocaleString('en-US')}`;
   const svcName = (k) => ((s.services || []).find((x) => x.k === k) || {}).label || DEF_SVC[k] || k;
@@ -70,7 +70,7 @@ export function orderPage(o, s = {}, { qrSrc = '' } = {}) {
 .st{border-radius:12px;padding:12px 14px;font-weight:600;text-align:center;margin-bottom:14px}.st.wait{background:#fff6dc;color:#7a5b00}.st.ready{background:#e6f6ea;color:#1c6b33}.st.done{background:#eef0f3;color:#333}.st.off{background:#fdeaea;color:#a12}
 table{width:100%;border-collapse:collapse;font-size:15px}td{padding:7px 0;border-bottom:1px solid #f0ece0}td.r{text-align:right}.tot td{border:0;padding:4px 0}.bal td{font-weight:800;font-size:17px}
 .qr{display:block;width:150px;height:150px;margin:16px auto 4px}.small{color:#888;font-size:13px;text-align:center;line-height:1.45}.btn{display:block;text-align:center;background:#0e0e0e;color:#fff;border-radius:12px;padding:13px;text-decoration:none;font-weight:700;margin-top:14px}</style></head><body>
-<div class="top"><div class="logo">FT</div><div><b>${esc(shop.replace(/ Dry Cleaner$/, ''))}</b>${/ Dry Cleaner$/.test(shop) ? ' Dry Cleaner' : ''}</div></div>
+<div class="top"><div class="logo">FT</div><div>${(() => { const m = /^(.*?)\s+(Laundry.*|Dry Cleaners?)$/i.exec(shop); return m ? `<b>${esc(m[1])}</b> ${esc(m[2])}` : `<b>${esc(shop)}</b>`; })()}</div>${tagline ? `<div style="opacity:.8;font-style:italic;font-size:14px;margin-top:4px">${esc(tagline)}</div>` : ''}</div>
 <div class="card"><div class="tk">${esc(o.ticket)}</div><p class="hi">Hello ${esc(first)} 👋</p><div class="st ${tone}">${esc(state)}</div>
 <table>${items.map((i) => `<tr><td>${esc(i.qty)} × ${esc(i.garment)} <span style="color:#999">· ${esc(svcName(i.service))}</span></td><td class="r">${money((+i.qty || 0) * (+i.price || 0))}</td></tr>`).join('')}</table>
 <table style="margin-top:8px"><tr class="tot"><td>Total</td><td class="r">${money(t.total)}</td></tr><tr class="tot"><td>Paid</td><td class="r">${money(t.paid)}</td></tr>${o.accountId ? '<tr class="bal"><td>Balance</td><td class="r">On account</td></tr>' : `<tr class="bal"><td>Balance</td><td class="r">${money(Math.max(0, t.bal))}</td></tr>`}</table>
