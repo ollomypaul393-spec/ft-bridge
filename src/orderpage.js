@@ -47,7 +47,7 @@ export function orderTotals(o) {
 const DEF_SVC = { dry: 'Dry clean', wash: 'Wash', iron: 'Iron', fee: 'Service fee' };
 const niceDate = (d) => { try { return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); } catch { return d; } };
 
-export function orderPage(o, s = {}, { qrSrc = '', tagline = '' } = {}) {
+export function orderPage(o, s = {}, { qrSrc = '', tagline = '', appPath = '/' } = {}) {
   const cur = s.currency || 'TSh';
   const money = (n) => `${cur} ${Math.round(+n || 0).toLocaleString('en-US')}`;
   const svcName = (k) => ((s.services || []).find((x) => x.k === k) || {}).label || DEF_SVC[k] || k;
@@ -76,7 +76,7 @@ table{width:100%;border-collapse:collapse;font-size:15px}td{padding:7px 0;border
 <table style="margin-top:8px"><tr class="tot"><td>Total</td><td class="r">${money(t.total)}</td></tr><tr class="tot"><td>Paid</td><td class="r">${money(t.paid)}</td></tr>${o.accountId ? '<tr class="bal"><td>Balance</td><td class="r">On account</td></tr>' : `<tr class="bal"><td>Balance</td><td class="r">${money(Math.max(0, t.bal))}</td></tr>`}</table>
 ${qrSrc ? `<img class="qr" src="${esc(qrSrc)}" alt="QR code for ${esc(o.ticket)}"><p class="small">Show this code or your ticket number <b>${esc(o.ticket)}</b> when you collect.</p>` : ''}
 ${s.phone || s.address ? `<p class="small" style="margin-top:14px">${s.address ? esc(s.address) + '<br>' : ''}${s.phone ? `Questions? <a href="tel:${esc(String(s.phone).replace(/\s/g, ''))}">${esc(s.phone)}</a>` : ''}</p>` : ''}
-<a class="btn" id="staffBtn" href="/#scan/${esc(o.pub)}" hidden>Open this order in the shop app</a></div>
-<script>try{if(localStorage.getItem('ft-session')){document.getElementById('staffBtn').hidden=false;location.replace('/#scan/${esc(o.pub)}')}}catch(e){}</script>
+<a class="btn" id="staffBtn" href="${esc(appPath)}#scan/${esc(o.pub)}" hidden>Open this order in the shop app</a></div>
+<script>try{if(localStorage.getItem('ft-session')){document.getElementById('staffBtn').hidden=false;location.replace('${esc(appPath)}#scan/${esc(o.pub)}')}}catch(e){}</script>
 </body></html>`;
 }

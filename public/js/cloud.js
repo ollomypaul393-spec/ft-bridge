@@ -13,6 +13,10 @@
   /* ---------------- which company (Fast Technology / High Technology) ---------------- */
   const COS = CFG.companies && CFG.companies.length ? CFG.companies : [{ id: 'ft', short: 'FT', name: 'Fast Technology Dry Cleaner', theme: {} }];
   let coId = ''; try { coId = localStorage.getItem('ft-company') || ''; } catch (e) {}
+  // opened through a company's own link (/ht, /ft) or own web address: that company, no picker
+  const linkCo = (/^\/(ft|ht)\/?$/i.exec(location.pathname) || [])[1];
+  const LOCK = (CFG.lockCompany || (linkCo ? linkCo.toLowerCase() : '')) || '';
+  if (LOCK) { coId = LOCK; try { localStorage.setItem('ft-company', coId); } catch (e) {} }
   const coOf = (id) => COS.find((c) => c.id === id);
   function applyTheme(c) {
     if (!c) return; window.FT_CO = c; const t = c.theme || {}, r = document.documentElement.style; document.documentElement.dataset.co = c.id;
@@ -96,7 +100,8 @@
     body(`<p class="ftauth-msg">Which shop do you want to open?</p><div class="copick">${list.map((c) => `<button class="coopt" data-co="${esc(c.id)}" style="--c1:${esc(c.theme.nav)};--c2:${esc(c.theme.accent)}"><span class="cologo${c.logo ? ' img' : ''}">${c.logo ? `<img src="${esc(c.logo)}" alt="">` : esc(c.short)}</span><span><b>${esc(c.name)}</b><small>${c.role === 'admin' ? 'Admin' : 'Staff'}</small></span></button>`).join('')}</div><p class="ftauth-small">You can switch later from your profile picture menu.</p>`);
     document.querySelectorAll('.coopt').forEach((b) => (b.onclick = () => { coId = b.dataset.co; try { localStorage.setItem('ft-company', coId); } catch (e) {} applyTheme(coOf(coId)); const h = document.getElementById('ftAuthHead'); if (h) h.innerHTML = cardHead(coOf(coId)); start(); }));
   }
-  window.ftSwitchCompany = (id) => { try { localStorage.setItem('ft-company', id); } catch (e) {} location.hash = ''; location.reload(); };
+  window.ftSwitchCompany = (id) => { try { localStorage.setItem('ft-company', id); } catch (e) {} if (CFG.lockCompany) return; location.href = '/' + id; };
+  window.ftSignOutNow = () => signOut();
   window.ftSignOut = () => { if (confirm('Sign out of this device? You will need to sign in with Google again.')) signOut(); };
 
   async function start() {
@@ -105,7 +110,8 @@
       try {
         me = await api('/api/me');
         let chosen = ''; try { chosen = localStorage.getItem('ft-company') || ''; } catch (e) {}
-        if (me.companies.length > 1 && !me.companies.some((c) => c.id === chosen)) { me = null; return pickCompany(); }
+        if (LOCK && me.company.id !== LOCK) { const want = coOf(LOCK); me = null; return body(`<p class="ftauth-msg"><span class="ftauth-err">This Google account is not on ${esc(want ? want.name : 'this shop')}'s staff list.</span></p><p class="ftauth-small">Ask the owner to add your Gmail to your staff profile in that shop.</p><button class="coopt" onclick="ftSignOutNow()" style="justify-content:center">Use another Google account</button>`); }
+        if (!LOCK && me.companies.length > 1 && !me.companies.some((c) => c.id === chosen)) { me = null; return pickCompany(); }
         coId = me.company.id; try { localStorage.setItem('ft-company', coId); } catch (e) {}
         applyTheme(me.company); window.FT_ME = me;
         if (typeof DEF !== 'undefined') { DEF.shopName = me.company.name; if (DEF.branches && DEF.branches[0]) DEF.branches[0] = { ...DEF.branches[0], name: me.company.name.replace(/ Dry Cleaner$/, '') + ' HQ' }; }

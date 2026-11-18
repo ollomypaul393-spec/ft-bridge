@@ -13,7 +13,7 @@ import { callTool, notifyAll, handleRpc } from './mcp.js';
 import { addDevice, recentAlerts, useDocs } from './store.js';
 import { page, serviceWorker, manifest, ICON_SVG } from './alerts-app.js';
 import { DocStore, acquireLease } from './db.js';
-import { COMPANIES, publicInfo, envFor, scopeAll, brandify } from './companies.js';
+import { COMPANIES, byId, publicInfo, envFor, scopeAll, brandify } from './companies.js';
 import { adminEmails, makeToken, readToken, verifyGoogle, roleOf, canRead, canReadColl, canWrite, canUseTool, validColl, validId } from './auth.js';
 import { buildDailyReport, dayStr, localHM } from './report.js';
 import { nextTicket, pubIndex, validPub, orderPage } from './orderpage.js';
@@ -70,6 +70,16 @@ function who(req, url) {
   return { user, mine, co: sel ? sel.c : null, role: sel ? sel.role : null };
 }
 const site = (req) => (env.APP_URL || 'https://' + req.headers.host).replace(/\/$/, '');
+/* optional own web addresses, e.g. COMPANY_DOMAINS="hightechnology.co.tz=ht, fasttechnology.co.tz=ft" */
+const domainCo = (host) => {
+  const h = String(host || '').toLowerCase().split(':')[0].replace(/^www\./, '');
+  for (const pair of String(env.COMPANY_DOMAINS || '').split(/[,;\s]+/)) {
+    const [d, id] = pair.split('=');
+    if (d && id && h === d.toLowerCase().replace(/^www\./, '')) return byId(id.trim());
+  }
+  return null;
+};
+const siteFor = (co, req) => (env['APP_URL_' + co.id.toUpperCase()] || env.APP_URL || 'https://' + req.headers.host).replace(/\/$/, '');
 const alertsPath = (c) => (env.ALERTS_KEY && env.ALERTS_KEY.length >= 16 ? `/alerts/${env.ALERTS_KEY}${c.prefix ? '-' + c.id : ''}` : null);
 const alertsLink = (c) => (alertsPath(c) && env.APP_URL ? env.APP_URL.replace(/\/$/, '') + alertsPath(c) : '');
 
@@ -185,14 +195,18 @@ export const server = http.createServer(async (req, res) => {
       let o = null, co = null;
       if (validPub(qm[2])) for (const c of COMPANIES) { const f = pubIdx.get(c.id) && pubIdx.get(c.id).find(qm[2]); if (f) { o = f; co = c; break; } }
       if (!o) return send(res, 404, 'Order not found. Please check with the shop.');
-      const link = `${site(req)}/o/${o.pub}`;
+      const link = `${siteFor(co, req)}/o/${o.pub}`;
       if (qm[1] === 'qr' && qm[3] === '.png') { res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=604800' }); return res.end(qrPng(link)); }
       if (qm[1] === 'qr') return send(res, 200, qrSvg(link), { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=604800' });
-      if (!qm[3]) return send(res, 200, brandify(orderPage(o, { shopName: co.name, ...(scopes.get(co.id).get('settings', 'shop') || {}) }, { qrSrc: `/qr/${o.pub}.svg`, tagline: co.tagline }), co), { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
+      if (!qm[3]) return send(res, 200, brandify(orderPage(o, { shopName: co.name, ...(scopes.get(co.id).get('settings', 'shop') || {}) }, { qrSrc: `/qr/${o.pub}.svg`, tagline: co.tagline, appPath: '/' + co.id }), co), { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
       return send(res, 404, 'Not found');
     }
 
-    if (p === '/config.js') return send(res, 200, `window.FT_CONFIG=${JSON.stringify({ googleClientId: env.GOOGLE_CLIENT_ID || '', companies: COMPANIES.map(publicInfo) })};`, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' });
+    // each company's own link: /ht and /ft open that shop directly
+    const entry = /^\/(ft|ht)\/?$/i.exec(p);
+    if (entry && req.method === 'GET') { if (p.endsWith('/')) return send(res, 301, '', { location: p.replace(/\/+$/, '') + url.search }); return serveStatic(res, '/') || send(res, 404, 'Not found'); }
+
+    if (p === '/config.js') { const dc = domainCo(req.headers.host); return send(res, 200, `window.FT_CONFIG=${JSON.stringify({ googleClientId: env.GOOGLE_CLIENT_ID || '', companies: COMPANIES.map(publicInfo), lockCompany: dc ? dc.id : '' })};`, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' }); }
 
     // optional: keep the Claude connector working if BRIDGE_KEY is set (Fast Technology)
     if (env.BRIDGE_KEY && env.BRIDGE_KEY.length >= 16 && p === `/mcp/${env.BRIDGE_KEY}`) {

@@ -6,7 +6,11 @@ One app, two companies. Each has its own data, staff, tickets (FT0001… / HT000
 |---|---|---|
 | Admins | `ADMIN_EMAILS` | `ADMIN_EMAILS_HT` (empty = same as Fast Technology) |
 | WhatsApp number | `WA_PHONE_ID` | `WA_PHONE_ID_HT` |
+| App link | `https://<address>/ft` | `https://<address>/ht` |
 | Alerts app link | `/alerts/<ALERTS_KEY>` | `/alerts/<ALERTS_KEY>-ht` |
+
+Own web addresses (optional): point both domains at this Render service (Render → Settings → Custom Domains), then set
+`COMPANY_DOMAINS="fasttechnology.co.tz=ft, hightechnology.co.tz=ht"` and `APP_URL_FT` / `APP_URL_HT` to those addresses, and add both to Google's *Authorized JavaScript origins*.
 
 The whole shop system on your own address, **https://ft-bridge.onrender.com** — no Claude needed.
 
