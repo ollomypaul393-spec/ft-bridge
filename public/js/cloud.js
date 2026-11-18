@@ -59,9 +59,10 @@
   let gTries = 0;
   function renderGoogle() {
     const el = document.getElementById('gbtn'); if (!el) return;
-    if (!CFG.googleClientId) { el.innerHTML = '<p class="ftauth-err">Google sign-in is not set up on the server yet (GOOGLE_CLIENT_ID).</p>'; return; }
+    const clientId = (CFG.googleClientIds || {})[coId || (window.FT_CO || {}).id] || CFG.googleClientId;
+    if (!clientId) { el.innerHTML = '<p class="ftauth-err">Google sign-in is not set up on the server yet (GOOGLE_CLIENT_ID).</p>'; return; }
     if (!(window.google && google.accounts && google.accounts.id)) { if (gTries++ < 100) setTimeout(renderGoogle, 150); else el.innerHTML = '<p class="ftauth-err">Could not load Google sign-in. Check the internet and reload.</p>'; return; }
-    google.accounts.id.initialize({ client_id: CFG.googleClientId, callback: onCredential, auto_select: false, ux_mode: 'popup' });
+    google.accounts.id.initialize({ client_id: clientId, callback: onCredential, auto_select: false, ux_mode: 'popup' });
     el.innerHTML = ''; google.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', width: 260 });
   }
   async function onCredential(resp) {

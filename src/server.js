@@ -84,6 +84,24 @@ const alertsPath = (c) => (env.ALERTS_KEY && env.ALERTS_KEY.length >= 16 ? `/ale
 const alertsLink = (c) => (alertsPath(c) && env.APP_URL ? env.APP_URL.replace(/\/$/, '') + alertsPath(c) : '');
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
+/* the app page, already in the right company's name, logo and colours (for home-screen installs and link previews) */
+function serveIndex(res, co) {
+  let html = fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8');
+  if (co && co.id !== 'ft') {
+    const t = co.theme;
+    html = html.replace(/<title>[^<]*<\/title>/, `<title>${co.name}</title>`)
+      .replace(/<link rel="icon" href="[^"]*">/, `<link rel="icon" href="${co.icon}">`)
+      .replace('href="manifest.webmanifest"', `href="/manifest-${co.id}.webmanifest"`)
+      .replace('<link rel="apple-touch-icon" href="icon.svg">', `<link rel="apple-touch-icon" href="${co.icon}">`)
+      .replace('<meta name="theme-color" content="#0e0e0e">', `<meta name="theme-color" content="${t.nav}">`)
+      .replace('content="Fast Technology">', `content="${co.brand}">`)
+      .replace('content="Fast Technology Dry Cleaner">', `content="${co.name}">`)
+      .replace('<meta property="og:image" content="/icon.svg">', `<meta property="og:image" content="${co.icon}">`)
+      .replace('<html lang="en">', `<html lang="en" data-co="${co.id}">`);
+  }
+  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache', 'x-content-type-options': 'nosniff', 'referrer-policy': 'strict-origin-when-cross-origin' });
+  res.end(html); return true;
+}
 function serveStatic(res, pathname) {
   let rel = decodeURIComponent(pathname); if (rel === '/' || rel === '') rel = '/index.html';
   const file = path.normalize(path.join(PUBLIC, rel));
@@ -204,9 +222,10 @@ export const server = http.createServer(async (req, res) => {
 
     // each company's own link: /ht and /ft open that shop directly
     const entry = /^\/(ft|ht)\/?$/i.exec(p);
-    if (entry && req.method === 'GET') { if (p.endsWith('/')) return send(res, 301, '', { location: p.replace(/\/+$/, '') + url.search }); return serveStatic(res, '/') || send(res, 404, 'Not found'); }
+    if (entry && req.method === 'GET') { if (p.endsWith('/')) return send(res, 301, '', { location: p.replace(/\/+$/, '') + url.search }); return serveIndex(res, domainCo(req.headers.host) || byId(entry[1].toLowerCase())); }
+    if (req.method === 'GET' && (p === '/' || p === '/index.html')) return serveIndex(res, domainCo(req.headers.host));
 
-    if (p === '/config.js') { const dc = domainCo(req.headers.host); return send(res, 200, `window.FT_CONFIG=${JSON.stringify({ googleClientId: env.GOOGLE_CLIENT_ID || '', companies: COMPANIES.map(publicInfo), lockCompany: dc ? dc.id : '' })};`, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' }); }
+    if (p === '/config.js') { const dc = domainCo(req.headers.host); return send(res, 200, `window.FT_CONFIG=${JSON.stringify({ googleClientId: env.GOOGLE_CLIENT_ID || '', googleClientIds: Object.fromEntries(COMPANIES.map((c) => [c.id, env['GOOGLE_CLIENT_ID_' + c.id.toUpperCase()] || env.GOOGLE_CLIENT_ID || ''])), companies: COMPANIES.map(publicInfo), lockCompany: dc ? dc.id : '' })};`, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' }); }
 
     // optional: keep the Claude connector working if BRIDGE_KEY is set (Fast Technology)
     if (env.BRIDGE_KEY && env.BRIDGE_KEY.length >= 16 && p === `/mcp/${env.BRIDGE_KEY}`) {
@@ -283,7 +302,7 @@ export const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && serveStatic(res, p)) return;
-    if (req.method === 'GET' && !path.extname(p) && serveStatic(res, '/')) return;
+    if (req.method === 'GET' && !path.extname(p)) return serveIndex(res, domainCo(req.headers.host));
     return send(res, 404, 'Not found');
   } catch (e) {
     if (!res.headersSent) return send(res, e.status || 500, { error: e.status ? e.message : 'Server error' });

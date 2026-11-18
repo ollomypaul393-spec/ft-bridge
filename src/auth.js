@@ -45,7 +45,8 @@ export async function verifyGoogle(env, credential, fetchImpl = (...a) => global
   const r = await fetchImpl('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(String(credential || '')));
   const t = await r.json().catch(() => ({}));
   if (!r.ok || !t.sub) throw new Error('Google sign-in failed. Please try again.');
-  if (t.aud !== env.GOOGLE_CLIENT_ID) throw new Error('This sign-in was not made for this app.');
+  const ours = Object.entries(env).filter(([k, v]) => /^GOOGLE_CLIENT_ID(_[A-Z]+)?$/.test(k) && v).map(([, v]) => v);
+  if (!ours.includes(t.aud)) throw new Error('This sign-in was not made for this app.');
   if (!['accounts.google.com', 'https://accounts.google.com'].includes(t.iss)) throw new Error('Unknown sign-in issuer.');
   if (!(t.email_verified === true || t.email_verified === 'true')) throw new Error('Your Google email is not verified.');
   if (+t.exp * 1000 < Date.now()) throw new Error('Sign-in expired. Please try again.');
