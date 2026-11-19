@@ -4,7 +4,7 @@
 
 | Render service | `ONLY_COMPANY` | Address |
 |---|---|---|
-| ft-bridge (Fast Technology) | `ft` | https://ft-bridge.onrender.com |
+| fasttechnology (Fast Technology) | `ft` | https://fasttechnology.onrender.com |
 | hightechnology (High Technology) | `ht` | https://hightechnology.onrender.com |
 
 Both can use the same Neon `DATABASE_URL` (each shop's data is kept apart), or each its own. Every other setting (ADMIN_EMAILS, WA_PHONE_ID, GOOGLE_CLIENT_ID, keys…) is set separately on each service.
