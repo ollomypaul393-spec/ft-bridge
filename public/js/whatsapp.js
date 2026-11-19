@@ -2,9 +2,9 @@
 /* ================= WhatsApp (Meta Cloud API) + push alerts + email, via the FT Bridge connector (Render) ================= */
 const WA_SERVER='FT Bridge';
 const WA_TPL={
-  receipt:{name:'order_receipt',n:9,img:true,
-    en:'Hello {{1}}, thank you for choosing {{2}}. We have received your order {{3}}: {{4}}. Total {{5}}, paid {{6}}, balance {{7}}. Ready by {{8}}. Show the QR code above or your ticket number when you collect. Track your order: {{9}}',
-    sw:'Habari {{1}}, asante kwa kuchagua {{2}}. Tumepokea oda yako {{3}}: {{4}}. Jumla {{5}}, umelipa {{6}}, salio {{7}}. Itakuwa tayari {{8}}. Onyesha QR code iliyo juu au namba ya tiketi unapokuja kuchukua. Fuatilia oda yako: {{9}}'},
+  receipt:{name:'order_receipt',n:6,img:true,
+    en:'Hello {{1}}, thank you for choosing {{2}}. Your receipt for order {{3}} is in the picture above. Balance {{4}}, ready by {{5}}. Show the QR code or your ticket number when you collect. See your order anytime: {{6}}',
+    sw:'Habari {{1}}, asante kwa kuchagua {{2}}. Risiti ya oda yako {{3}} iko kwenye picha hapo juu. Salio {{4}}, itakuwa tayari {{5}}. Onyesha QR code au namba ya tiketi unapokuja kuchukua. Angalia oda yako wakati wowote: {{6}}'},
   ready:{name:'order_ready',n:4,
     en:'Hello {{1}}, your clothes at {{2}} (ticket {{3}}) are ready for pickup. Balance to pay: {{4}}. Thank you!',
     sw:'Habari {{1}}, nguo zako {{2}} (tiketi {{3}}) ziko tayari kuchukuliwa. Salio la kulipa: {{4}}. Asante!'},
@@ -35,7 +35,7 @@ function intlPhone(p){let d=String(p||'').replace(/\D/g,'');const cc=String(S().
 function waItems(o){const its=(o.items||[]).filter(i=>i.service!=='fee');let t=its.map(i=>`${i.qty} ${i.garment}${SVC().length>1?' ('+svc(i.service)+')':''}`).join(', ');if(t.length>300)t=t.slice(0,297)+'...';return t||'items'}
 function waParams(kind,o){
   const s=S(),c=calc(o),first=String(o.customerName||'Customer').split(' ')[0],bal=o.accountId?'on account':money(Math.max(0,c.bal));
-  if(kind==='receipt')return [first,s.shopName,o.ticket,waItems(o),money(c.total),o.accountId?'on account':money(c.paid),bal,fmtD(o.dueDate),trackLink(o)||'ask the shop'];
+  if(kind==='receipt')return [first,s.shopName,o.ticket,bal,fmtD(o.dueDate),trackLink(o)||'ask the shop'];
   if(kind==='ready')return [first,s.shopName,o.ticket,bal];
   return [first,s.shopName,o.ticket,fmtD(o.dueDate),bal];
 }
@@ -60,7 +60,7 @@ async function waSend(kind,o,opts={}){
   waBusy.add(o.id+kind);if(modal)renderModal();
   try{
     const args={to,template:waTplName(kind),language:waLang(),params:waParams(kind,o)};
-    if(WA_TPL[kind].img&&S().waQr!==false&&qrImg(o))args.header_image=qrImg(o);
+    if(WA_TPL[kind].img&&S().waQr!==false){try{args.header_image=await uploadReceiptPicture(o)}catch(e){if(qrImg(o))args.header_image=qrImg(o)}}
     const r=await m.callTool(WA_SERVER,'send_template',args);
     const p=r&&r.payload||{};waBusy.delete(o.id+kind);
     if(p&&p.ok===false){throw {code:'tool_error',message:JSON.stringify(p),result:{structuredContent:p}}}
@@ -107,7 +107,7 @@ VIEWS.whatsapp=()=>{
   <div><div class="card"><div class="spread"><h3 style="margin:0">Automatic WhatsApp</h3>${pill(d.waAuto?'active':'inactive')}</div>
    <p class="small muted">Messages go from your shop's WhatsApp Business number through Meta. Meta charges per message.</p>
    <label class="check"><input type="checkbox" data-f="wa" data-k="waAuto" ${d.waAuto?'checked':''}>Send the receipt automatically when an order is saved</label>
-   <label class="check"><input type="checkbox" data-f="wa" data-k="waQr" ${d.waQr!==false?'checked':''}><span>Put the order's <b>QR code</b> picture on top of the receipt <span class="muted">(the order_receipt template needs an Image header)</span></span></label>
+   <label class="check"><input type="checkbox" data-f="wa" data-k="waQr" ${d.waQr!==false?'checked':''}><span>Send the <b>receipt picture</b> (looks like the receipt page, with the QR code) <span class="muted">— the order_receipt template needs an Image header</span></span></label>
    <p class="small muted" style="margin:-6px 0 12px 26px">When on, the “ready” and “reminder” buttons also send directly instead of opening WhatsApp.</p>
    <div class="grid g2" style="gap:10px"><label class="f">Message language<select data-f="wa" data-k="waLang">${opts([['en','English (en)'],['sw','Kiswahili (sw)']],d.waLang)}</select></label><label class="f">Receipt template name<input type="text" data-f="wa" data-k="waTpl_receipt" value="${esc(d.waTpl_receipt)}"></label></div>
    <div class="grid g2" style="gap:10px"><label class="f">“Ready” template name<input type="text" data-f="wa" data-k="waTpl_ready" value="${esc(d.waTpl_ready)}"></label><label class="f">Reminder template name<input type="text" data-f="wa" data-k="waTpl_remind" value="${esc(d.waTpl_remind)}"></label></div>
@@ -156,9 +156,9 @@ VIEWS.whatsapp=()=>{
     <button class="btn sm" data-act="dailyNow">Send today's report now</button></div></div>
    <button class="btn primary" data-act="waSave">Save</button></div>
   <h3 class="h3">Templates to submit to Meta (${d.waLang==='sw'?'Kiswahili':'English'})</h3>
-  <div class="grid g3">${Object.entries(WA_TPL).map(([k,t])=>`<div class="card"><div class="spread"><b class="mono">${esc(waDraft['waTpl_'+k]||t.name)}</b><span class="small muted">Utility · ${d.waLang}${t.owner?' · <b>to you</b>':''}</span></div>${t.img&&d.waQr!==false?`<div class="small" style="margin:6px 0"><b>Header:</b> Image — upload <a href="/qr/sample.png" download="qr-sample.png" target="_blank">this sample QR picture</a> when Meta asks for a sample</div>`:''}<p class="small" style="background:#faf9f5;border:1px solid var(--line);border-radius:10px;padding:10px;white-space:pre-wrap">${esc(t[d.waLang]||t.en)}</p>${d.waFooter?`<div class="small muted" style="margin:-6px 0 8px">Footer: <i>${esc(d.waFooter)}</i></div>`:''}<div class="small muted" style="margin-bottom:8px">Sample values for Meta: ${esc(sampleParams(k).map((v,i)=>`{{${i+1}}} ${v}`).join(' · '))}</div><button class="btn sm" data-act="waCopyTpl" data-k="${k}">Copy text</button></div>`).join('')}</div></div>`;
+  <div class="grid g3">${Object.entries(WA_TPL).map(([k,t])=>`<div class="card"><div class="spread"><b class="mono">${esc(waDraft['waTpl_'+k]||t.name)}</b><span class="small muted">Utility · ${d.waLang}${t.owner?' · <b>to you</b>':''}</span></div>${t.img&&d.waQr!==false?`<div class="small" style="margin:6px 0"><b>Header:</b> Image — upload any receipt picture (open an order → 🖼 Save picture) when Meta asks for a sample</div>`:''}<p class="small" style="background:#faf9f5;border:1px solid var(--line);border-radius:10px;padding:10px;white-space:pre-wrap">${esc(t[d.waLang]||t.en)}</p>${d.waFooter?`<div class="small muted" style="margin:-6px 0 8px">Footer: <i>${esc(d.waFooter)}</i></div>`:''}<div class="small muted" style="margin-bottom:8px">Sample values for Meta: ${esc(sampleParams(k).map((v,i)=>`{{${i+1}}} ${v}`).join(' · '))}</div><button class="btn sm" data-act="waCopyTpl" data-k="${k}">Copy text</button></div>`).join('')}</div></div>`;
 };
-function sampleParams(k){const s=S();if(k==='payment')return [s.shopName,'TSh 15,000','M-Pesa','FT0427','Asha Mwinyi','Rebecca John','17:24'];if(k==='daily')return [s.shopName,'17 Nov','24','61','18','TSh 412,000','Cash 250,000 · M-Pesa 162,000','TSh 35,000','closed, balanced'];if(k==='receipt')return ['Asha',s.shopName,'FT0427','2 Shirt (Dry clean), 1 Suit','TSh 18,000','TSh 10,000','TSh 8,000','20 Nov',(siteUrl()||'https://ft-bridge.onrender.com')+'/o/k3J9xQ2mP7aWr5Tz'];if(k==='ready')return ['Asha',s.shopName,'FT0427','TSh 8,000'];return ['Asha',s.shopName,'FT0427','20 Nov','TSh 8,000']}
+function sampleParams(k){const s=S();if(k==='payment')return [s.shopName,'TSh 15,000','M-Pesa','FT0427','Asha Mwinyi','Rebecca John','17:24'];if(k==='daily')return [s.shopName,'17 Nov','24','61','18','TSh 412,000','Cash 250,000 · M-Pesa 162,000','TSh 35,000','closed, balanced'];if(k==='receipt')return ['Asha',s.shopName,coShort()+'0427','TSh 8,000','20 Nov',(siteUrl()||'https://ft-bridge.onrender.com')+'/o/k3J9xQ2mP7aWr5Tz'];if(k==='ready')return ['Asha',s.shopName,'FT0427','TSh 8,000'];return ['Asha',s.shopName,'FT0427','20 Nov','TSh 8,000']}
 IN.wa=e=>{waDraft[e.dataset.k]=e.type==='checkbox'?e.checked:e.value.trim();if(['waFooter','waLang','payWa','alertsLink','waQr'].includes(e.dataset.k)){$('#formRoot').remove();render()}};
 ONCHANGE.add('wa');
 ACT.waPvTab=a=>{pvKind=a.dataset.k;$('#formRoot').remove();render()};

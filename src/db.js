@@ -32,6 +32,7 @@ export class DocStore {
     this.query = databaseUrl ? neonClient(databaseUrl, fetchImpl) : null;
     this.file = !databaseUrl && dataDir ? path.join(dataDir, 'docs.json') : '';
     this.ready = false;
+    this.blobCache = new Map(); // small recent cache of pictures (receipts); the database keeps them all
   }
 
   get kind() { return this.query ? 'neon' : this.file ? 'file' : 'memory'; }
@@ -41,6 +42,7 @@ export class DocStore {
       await this.query(`CREATE TABLE IF NOT EXISTS ft_docs (
         coll text NOT NULL, id text NOT NULL, data jsonb NOT NULL, updated_at bigint NOT NULL,
         PRIMARY KEY (coll, id))`);
+      await this.query('CREATE TABLE IF NOT EXISTS ft_blobs (k text PRIMARY KEY, data text NOT NULL, at bigint NOT NULL)');
       const rows = await this.query('SELECT coll, id, data::text AS data FROM ft_docs');
       for (const r of rows) this.#set(r.coll, r.id, typeof r.data === 'string' ? JSON.parse(r.data) : r.data);
     } else if (this.file && fs.existsSync(this.file)) {
@@ -80,6 +82,22 @@ export class DocStore {
     this.colls.get(coll)?.delete(id); this.#saveFile();
     this.#emit({ coll, id, data: null });
   }
+
+  /* pictures (base64), not kept in memory except a few recent ones */
+  async putBlob(k, b64) {
+    if (this.query) await this.query('INSERT INTO ft_blobs (k, data, at) VALUES ($1, $2, $3) ON CONFLICT (k) DO UPDATE SET data = EXCLUDED.data, at = EXCLUDED.at', [k, b64, Date.now()]);
+    else if (this.file) { const d = path.join(path.dirname(this.file), 'blobs'); fs.mkdirSync(d, { recursive: true }); fs.writeFileSync(path.join(d, k.replace(/[^\w.-]/g, '_')), b64); }
+    this.blobCache.set(k, b64); if (this.blobCache.size > 40) this.blobCache.delete(this.blobCache.keys().next().value);
+  }
+  async getBlob(k) {
+    if (this.blobCache.has(k)) return this.blobCache.get(k);
+    let v = null;
+    if (this.query) { const r = await this.query('SELECT data FROM ft_blobs WHERE k = $1', [k]); v = r[0] ? r[0].data : null; }
+    else if (this.file) { const f = path.join(path.dirname(this.file), 'blobs', k.replace(/[^\w.-]/g, '_')); if (fs.existsSync(f)) v = fs.readFileSync(f, 'utf8'); }
+    if (v) { this.blobCache.set(k, v); if (this.blobCache.size > 40) this.blobCache.delete(this.blobCache.keys().next().value); }
+    return v;
+  }
+  async pruneBlobs(olderThanMs) { if (this.query) await this.query('DELETE FROM ft_blobs WHERE at < $1', [Date.now() - olderThanMs]); }
 
   on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   #emit(ev) { for (const fn of this.listeners) { try { fn(ev); } catch (e) { console.error(e); } } }

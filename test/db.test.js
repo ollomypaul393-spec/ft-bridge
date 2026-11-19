@@ -56,6 +56,10 @@ test('access rules match the old Claude rules', async () => {
   assert.equal(roleOf(env3, d, { uid: 'g_5', email: 'paulollomy@gmail.com' }), 'admin');
   assert.equal(roleOf(env3, d, { uid: 'g_6', email: 'Second@Shop.co.tz' }), 'admin');
   assert.equal(roleOf(env3, d, { uid: 'g_7', email: 'paul.ollomy@yahoo.com' }), null);
+  await d.put('staff', 's3', { name: 'Manager', email: 'manager@gmail.com', active: true, admin: true });
+  assert.equal(roleOf({ ADMIN_EMAILS: '' }, d, { uid: 'g_8', email: 'manager@gmail.com' }), 'admin');
+  await d.put('staff', 's3', { name: 'Manager', email: 'manager@gmail.com', active: false, admin: true });
+  assert.equal(roleOf({ ADMIN_EMAILS: '' }, d, { uid: 'g_8', email: 'manager@gmail.com' }), null);
   assert.equal(canWrite('staff', 'g_2', 'orders', 'x'), true);
   assert.equal(canWrite('staff', 'g_2', 'settings', 'shop'), false);
   assert.equal(canWrite('staff', 'g_2', 'links', 'g_2'), true);

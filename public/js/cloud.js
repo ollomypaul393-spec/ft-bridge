@@ -111,6 +111,7 @@
     if (me) { location.reload(); return; }
     showSignIn(note);
   }
+  window.ftApi = api;
   window.ftNextTicket = async () => (await api('/api/ticket', { method: 'POST' })).ticket;
   async function pickCompany() {
     let list = []; try { list = (await (await fetch('/api/me', { headers: { authorization: 'Bearer ' + token } })).json()).companies || []; } catch (e) {}

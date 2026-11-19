@@ -185,6 +185,7 @@ async function runDailyAll() {
   for (const co of COMPANIES) { try { out[co.id] = await runDaily({ co }); } catch (e) { out[co.id] = { ok: false, error: e.message }; } }
   return { ok: Object.values(out).every((r) => r.ok !== false), companies: out };
 }
+setInterval(() => { if (!dbError) docs.pruneBlobs(120 * 864e5).catch(() => {}); }, 6 * 3600e3).unref(); // receipt pictures kept 4 months
 setInterval(() => { if (!dbError) runDailyAll().then((r) => { for (const [k, v] of Object.entries(r.companies)) if (v.sent) console.log('Daily report sent', k, v.sent); }); }, 60000).unref();
 
 /* ---------------- routes ---------------- */
@@ -218,6 +219,17 @@ export const server = http.createServer(async (req, res) => {
       if (p.endsWith('.png')) { res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' }); return res.end(qrPng(link)); }
       return send(res, 200, qrSvg(link), { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=86400' });
     }
+    // the receipt picture WhatsApp shows (made by the phone that saved the order)
+    const rm = /^\/r\/([A-Za-z0-9]{10,40})\.jpg$/.exec(p);
+    if (rm && req.method === 'GET') {
+      if (dbError) return send(res, 503, 'Starting up');
+      const b = await docs.getBlob('rc:' + rm[1]);
+      if (b) { res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'public, max-age=86400' }); return res.end(Buffer.from(b, 'base64')); }
+      let found = null; for (const c of COMPANIES) { found = pubIdx.get(c.id) && pubIdx.get(c.id).find(rm[1]); if (found) break; }
+      if (!found) return send(res, 404, 'Not found');
+      res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'no-cache' }); return res.end(qrPng(`${site(req)}/o/${rm[1]}`));
+    }
+
     // QR codes and the customer's order page (public — the long random key is the password)
     const qm = /^\/(o|qr)\/([A-Za-z0-9]+)(\.png|\.svg)?$/.exec(p);
     if (qm && req.method === 'GET') {
@@ -290,6 +302,15 @@ export const server = http.createServer(async (req, res) => {
         if (req.method === 'PUT') { const b = await readJson(req); await D.put(coll, id, b.data); return send(res, 200, { ok: true }); }
         if (req.method === 'DELETE') { await D.del(coll, id); return send(res, 200, { ok: true }); }
         return send(res, 405, { error: 'Method not allowed' });
+      }
+
+      if (p === '/api/receipt-image' && req.method === 'POST') {
+        const b = await readJson(req);
+        if (!validPub(b.pub) || !pubIdx.get(co.id).find(b.pub)) return send(res, 404, { error: 'Order not found' });
+        const mm = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.image || ''));
+        if (!mm || mm[1].length > 1600000) return send(res, 400, { error: 'Bad picture' });
+        await docs.putBlob('rc:' + b.pub, mm[1]);
+        return send(res, 200, { ok: true, url: `${siteFor(co, req)}/r/${b.pub}.jpg?v=${Date.now().toString(36)}` });
       }
 
       if (p === '/api/ticket' && req.method === 'POST') { const t = nextTicket(D, co.short); await t.save; return send(res, 200, { ticket: t.ticket }); }

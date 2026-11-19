@@ -214,7 +214,7 @@ MODALS.receipt=id=>{
   ${o.pub&&siteUrl()?`<div class="rqr"><img src="/qr/${esc(o.pub)}.svg" alt="QR code for ${esc(o.ticket)}" width="150" height="150"><div class="small">Customer scans to see the order · staff scan to open it</div></div>`:''}
   <pre class="receipt" id="rcpt">${esc(txt)}</pre>
   ${waOn()?`<div class="wabox"><span>${ic('wa')} WhatsApp receipt to ${esc(o.phone)} · <a href="#" data-act="waPreview" data-id="${esc(o.id)}" data-k="receipt">👁 Preview</a></span>${waStatusHtml(o,'receipt')}</div>`:''}
-  <div class="row-actions" style="margin-top:14px;justify-content:center"><button class="btn primary" data-act="copyReceipt">Copy receipt</button>
+  <div class="row-actions" style="margin-top:14px;justify-content:center"><button class="btn primary" data-act="copyReceipt">Copy receipt</button>${o.pub&&siteUrl()?`<button class="btn" data-act="rcPicture" data-id="${esc(o.id)}">🖼 Save picture</button>`:''}
   ${waOn()?`<button class="btn wa" data-act="waSendBtn" data-k="receipt" data-id="${esc(o.id)}" ${waBusy.has(o.id+'receipt')?'disabled':''}>${((o.wa||{}).receipt||{}).status==='sent'?'Send again':'Send receipt now'}</button><a class="btn" target="_blank" rel="noopener" href="${esc(waLink(o.phone,txt))}">Open in WhatsApp</a>`:`<a class="btn wa" target="_blank" rel="noopener" href="${esc(waLink(o.phone,txt))}">Send on WhatsApp</a>`}
   <button class="btn" data-act="openOrder" data-id="${esc(o.id)}">Order details</button></div>
   <p class="small muted" style="text-align:center;margin-top:12px">Tip: write <b class="mono">${esc(o.ticket)}</b> on a tag for each garment.</p>`;

@@ -42,7 +42,7 @@ VIEWS.staff=()=>{
   const served=id=>state.orders.filter(o=>o.staffId===id&&o.status!=='cancelled'&&dayOf(o.createdAt).startsWith(mo)).length;
   const row=x=>{const m=marks[x.id]||{};const st=m.in?(m.out?`<span class="muted">${fmtT(m.in)} – ${fmtT(m.out)}</span>`:`<span class="diff-ok">In since ${fmtT(m.in)}</span>`):'<span class="muted">Not in yet</span>';
     const btn=!m.in?`<button class="btn sm primary" data-act="clock" data-id="${esc(x.id)}">Clock in</button>`:!m.out?`<button class="btn sm" data-act="clock" data-id="${esc(x.id)}">Clock out</button>`:'';const d=days(x.id);
-    return `<div class="li m2" style="grid-template-columns:1.4fr 1.1fr .8fr .7fr auto" data-act="staffEdit" data-id="${esc(x.id)}"><div><div class="nm">${esc(x.name)}${x.pinHash?'':' <span class="tag late">NO PIN</span>'}</div><div class="ph">${esc(x.role||'')}${x.phone?' · '+esc(x.phone):''}</div></div><div class="small">${st}</div><div class="hide-m small">${d} day${d===1?'':'s'} this month</div><div class="hide-m small">${served(x.id)} orders</div><div class="row-actions" style="justify-content:flex-end">${btn}</div></div>`};
+    return `<div class="li m2" style="grid-template-columns:1.4fr 1.1fr .8fr .7fr auto" data-act="staffEdit" data-id="${esc(x.id)}"><div><div class="nm">${esc(x.name)}${x.admin?' <span class="tag adm">ADMIN</span>':''}${x.pinHash||x.admin?'':' <span class="tag late">NO PIN</span>'}</div><div class="ph">${esc(x.role||'')}${x.phone?' · '+esc(x.phone):''}</div></div><div class="small">${st}</div><div class="hide-m small">${d} day${d===1?'':'s'} this month</div><div class="hide-m small">${served(x.id)} orders</div><div class="row-actions" style="justify-content:flex-end">${btn}</div></div>`};
   const inNow=act.filter(x=>marks[x.id]&&marks[x.id].in&&!marks[x.id].out).length;
   return `<div class="toolbar"><span class="muted grow">Today: <b style="color:var(--ink)">${inNow} of ${act.length}</b> clocked in. Staff can also clock themselves in from the staff portal.</span><button class="btn primary" data-act="staffEdit">+ Add staff</button></div>
   <div class="list">${act.length?act.map(row).join(''):'<div class="empty">No staff added yet. Add your team to use the staff portal, track attendance and see who took each order.</div>'}</div>
@@ -58,6 +58,7 @@ MODALS.staff=id=>{
   <div class="grid g2" style="gap:10px"><label class="f">${x.pinHash?'Change sign-in PIN (leave blank to keep)':'Sign-in PIN (required)'}<input type="password" inputmode="numeric" id="sfPin" maxlength="8" autocomplete="new-password" placeholder="4 or 6 digits"></label><p class="small muted" style="align-self:center;margin:0">The first time, they sign in with the Google email above and type this PIN — after that their phone opens to their PIN screen. Every PIN must be different.</p></div>
   ${S().branches.length>1?`<label class="f">Branch<select id="sfBranch">${S().branches.map(b=>`<option value="${esc(b.id)}" ${b.id===(x.branchId||S().branches[0].id)?'selected':''}>${esc(b.name)}</option>`).join('')}</select></label>`:''}
   <label class="check"><input type="checkbox" id="sfActive" ${x.active!==false?'checked':''}>Currently working here</label>
+  <label class="check"><input type="checkbox" id="sfAdmin" ${x.admin?'checked':''}><span><b>Admin</b> — full access to everything, opens straight into the admin side without a PIN <span class="muted">(needs their Google email above)</span></span></label>
   <div class="row-actions"><button class="btn primary" data-act="staffSave">Save</button>${id?`<button class="btn" data-act="salaryOpen" data-id="${esc(id)}">Pay salary</button>`:''}</div>
   ${id?`<section><h4>Payments to ${esc(x.name.split(' ')[0])}</h4>${state.expenses.filter(e=>e.staffId===id).sort((a,b)=>a.date<b.date?1:-1).slice(0,12).map(e=>`<div class="spread small" style="padding:3px 0"><span>${fmtD(e.date)} · ${esc(e.note||'')}</span><b>${money(e.amount)}</b></div>`).join('')||'<div class="small muted">None recorded yet.</div>'}</section>`:''}`;
 };
@@ -74,10 +75,11 @@ Object.assign(ACT,{
   staffEdit:a=>openModal('staff',a.dataset.id||null),
   staffSave:async a=>{const id=modal.id;const name=$('#sfName').value.trim();if(!name){toast('Enter a name');return}
     const em=$('#sfEmail').value.trim();if(em&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){toast('Check the Google email');return}
+    if($('#sfAdmin')&&$('#sfAdmin').checked&&!em){toast('An admin needs their Google email');return}
     const pin=$('#sfPin').value.trim();if(pin&&!/^(\d{4}|\d{6})$/.test(pin)){toast('PIN must be 4 or 6 digits');return}
-    const clearing=$('#sfPinClear')&&$('#sfPinClear').checked;if(!pin&&$('#sfActive').checked&&(!id||!findStaff(id).pinHash||clearing)){toast('Give them a sign-in PIN (4–8 digits)');return}
+    const clearing=$('#sfPinClear')&&$('#sfPinClear').checked;if(!pin&&$('#sfActive').checked&&!($('#sfAdmin')&&$('#sfAdmin').checked)&&(!id||!findStaff(id).pinHash||clearing)){toast('Give them a sign-in PIN (4–8 digits)');return}
     if(pin&&await pinTaken(await sha(pin),id)){toast('That PIN is already used — choose another');return}
-    const base=id?findStaff(id):{id:uid(),createdAt:Date.now()};const rec={...base,name,role:$('#sfRole').value.trim(),phone:$('#sfPhone').value.trim(),email:$('#sfEmail').value.trim().toLowerCase(),startDate:$('#sfStart').value,active:$('#sfActive').checked,branchId:$('#sfBranch')?$('#sfBranch').value:(base.branchId||'')};
+    const base=id?findStaff(id):{id:uid(),createdAt:Date.now()};const rec={...base,name,role:$('#sfRole').value.trim(),phone:$('#sfPhone').value.trim(),email:$('#sfEmail').value.trim().toLowerCase(),admin:!!($('#sfAdmin')&&$('#sfAdmin').checked),startDate:$('#sfStart').value,active:$('#sfActive').checked,branchId:$('#sfBranch')?$('#sfBranch').value:(base.branchId||'')};
     if(pin){rec.pinHash=await sha(pin);rec.pinLen=pin.length}if($('#sfPinClear')&&$('#sfPinClear').checked)rec.pinHash='';
     const sal=Math.max(0,+$('#sfSalary').value||0);a.disabled=true;
     try{await put('staff',rec);if(sal!==salaryOf(rec.id))await put('staffpay',{id:rec.id,salary:sal});closeModal();toast('Saved')}catch(e){a.disabled=false}},

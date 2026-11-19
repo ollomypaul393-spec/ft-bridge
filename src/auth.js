@@ -59,7 +59,8 @@ export function roleOf(env, docs, user) {
   const email = sameEmail(user.email);
   if (email.includes('@') && adminEmails(env).some((a) => sameEmail(a) === email)) return 'admin';
   const staff = docs.list('staff').filter((s) => s.active !== false);
-  if (email.includes('@') && staff.some((s) => s.email && sameEmail(s.email) === email)) return 'staff';
+  const me = email.includes('@') ? staff.find((s) => s.email && sameEmail(s.email) === email) : null;
+  if (me) return me.admin === true ? 'admin' : 'staff'; // admins can be made on the Staff page (tick "Admin")
   const link = docs.get('links', user.uid || user.id);
   if (link && staff.some((s) => s.id === link.staffId)) return 'staff';
   return null;
