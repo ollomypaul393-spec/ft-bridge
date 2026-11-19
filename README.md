@@ -4,7 +4,7 @@
 
 | Render service | `ONLY_COMPANY` | Address |
 |---|---|---|
-| fast-technology (Fast Technology) | `ft` | https://fast-technology.onrender.com |
+| fast-technology (Fast Technology) | `ft` | https://ft-bridge.onrender.com |
 | high-technology (High Technology) | `ht` | https://high-technology.onrender.com |
 
 Both can use the same Neon `DATABASE_URL` (each shop's data is kept apart), or each its own. Every other setting (ADMIN_EMAILS, WA_PHONE_ID, GOOGLE_CLIENT_ID, keys…) is set separately on each service.
@@ -21,7 +21,7 @@ One app, two companies. Each has its own data, staff, tickets (FT0001… / HT000
 Own web addresses (optional): point both domains at this Render service (Render → Settings → Custom Domains), then set
 `COMPANY_DOMAINS="fasttechnology.co.tz=ft, hightechnology.co.tz=ht"` and `APP_URL_FT` / `APP_URL_HT` to those addresses, and add both to Google's *Authorized JavaScript origins*.
 
-The whole shop system on your own address, **https://fast-technology.onrender.com** — no Claude needed.
+The whole shop system on your own address, **https://ft-bridge.onrender.com** — no Claude needed.
 
 | Part | Where it runs | Cost |
 |---|---|---|
@@ -45,7 +45,7 @@ The app creates its table by itself.
 1. console.cloud.google.com → create a project “Fast Technology”.
 2. **APIs & Services → OAuth consent screen** → External → app name *Fast Technology*, your email → Save. Then **Publish app**.
 3. **Credentials → Create credentials → OAuth client ID** → *Web application*.
-   **Authorized JavaScript origins:** `https://fast-technology.onrender.com` (your real Render address).
+   **Authorized JavaScript origins:** `https://ft-bridge.onrender.com` (your real Render address).
 4. Copy the **Client ID** (`…apps.googleusercontent.com`). This is `GOOGLE_CLIENT_ID`.
 
 ## 3. Render
