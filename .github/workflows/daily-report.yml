@@ -1,6 +1,6 @@
-name: Daily report (21:20 Dar es Salaam)
-# Wakes the free Render server and asks it to email the day's report.
-# The server only sends once per day, only after 21:00, and only if the daily email is on in Settings.
+name: Daily report (21:20 Dodoma time)
+# Wakes each free Render app and asks it to email that shop's report.
+# Each app sends at most once a day, only after 21:00, and only if the daily email is on in its Settings.
 on:
   schedule:
     - cron: '20 18 * * *'   # 18:20 UTC = 21:20 EAT (GitHub may run it a few minutes late)
@@ -8,13 +8,15 @@ on:
 jobs:
   report:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        site: ['https://ft-bridge.onrender.com', 'https://high-technology.onrender.com']
     steps:
-      - name: Wake the server and send the report
-        env:
-          SITE: ${{ vars.SITE_URL || 'https://ft-bridge.onrender.com' }}
+      - name: Wake the app and send the report
         run: |
           for i in 1 2 3 4 5 6; do
-            out=$(curl -s --max-time 90 "$SITE/cron/daily") && echo "$out" && echo "$out" | grep -q '"ok":true' && exit 0
-            echo "Server still waking up… ($i)"; sleep 20
+            out=$(curl -s --max-time 90 "${{ matrix.site }}/cron/daily") && echo "$out" && echo "$out" | grep -q '"ok":true' && exit 0
+            echo "Still waking up… ($i)"; sleep 20
           done
           exit 1
