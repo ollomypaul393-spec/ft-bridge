@@ -23,9 +23,9 @@ export const ALL_COMPANIES = [
   }
 ];
 /* ONLY_COMPANY=ht (or ft) on Render makes this copy of the app run that one shop only — a separate app with its own address. */
-const ONLY = String(process.env.ONLY_COMPANY || '').toLowerCase().split(/[,\s]+/).filter(Boolean);
+const ONLY = String(process.env.ONLY_COMPANY || '').toLowerCase().replace(/["'←]/g, ' ').split(/[,\s]+/).filter((x) => ALL_COMPANIES.some((c) => c.id === x));
+if (process.env.ONLY_COMPANY && !ONLY.length) console.error(`ONLY_COMPANY="${process.env.ONLY_COMPANY}" is not ft or ht — running both shops.`);
 export const COMPANIES = ONLY.length ? ALL_COMPANIES.filter((c) => ONLY.includes(c.id)) : ALL_COMPANIES;
-if (!COMPANIES.length) throw new Error('ONLY_COMPANY must be one of: ' + ALL_COMPANIES.map((c) => c.id).join(', '));
 export const SINGLE = COMPANIES.length === 1;
 export const byId = (id) => COMPANIES.find((c) => c.id === id) || null;
 export const publicInfo = (c) => ({ id: c.id, short: c.short, name: c.name, brand: c.brand, tagline: c.tagline, logo: c.logo, logoFull: c.logoFull, icon: c.icon, theme: c.theme });

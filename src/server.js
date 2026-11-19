@@ -25,17 +25,28 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = path.join(ROOT, 'public');
 const MAX_BODY = 3 * 1024 * 1024;
 if (!env.APP_URL && env.RENDER_EXTERNAL_URL) env.APP_URL = env.RENDER_EXTERNAL_URL;
-if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 16) { console.error('SESSION_SECRET must be a long random value. Refusing to start.'); process.exit(1); }
+/* setup mistakes are shown on the web page instead of crashing, so they are easy to see */
+const setupProblems = [];
+for (const k of Object.keys(env)) if (/^(DATABASE_URL|GOOGLE_CLIENT_ID|ADMIN_EMAILS|SESSION_SECRET|ALERTS_KEY|VAPID_[A-Z_]+|ONLY_COMPANY)$/.test(k)) env[k] = String(env[k]).trim().replace(/^["']|["']$/g, '').replace(/\s*←.*$/, '').trim();
+if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 16) setupProblems.push('SESSION_SECRET is missing or too short (it must be a long random value, at least 16 letters/numbers).');
+if (env.RENDER && !env.DATABASE_URL) setupProblems.push('DATABASE_URL is missing — paste your Neon connection string (it starts with postgresql://).');
+if (env.RENDER && !env.ADMIN_EMAILS) setupProblems.push('ADMIN_EMAILS is missing — put your Gmail address.');
+if (env.RENDER && !env.GOOGLE_CLIENT_ID) setupProblems.push('GOOGLE_CLIENT_ID is missing — copy it from Google Cloud → Clients.');
+if (env.DATABASE_URL && !/^postgres(ql)?:\/\//.test(env.DATABASE_URL.replace(/^psql\s+/, '').replace(/^['"]/, ''))) setupProblems.push('DATABASE_URL does not look right — it must start with postgresql:// (copy it from Neon → Connect).');
 for (const [k, why] of [['DATABASE_URL', 'data is NOT saved permanently (set your Neon connection string)'], ['GOOGLE_CLIENT_ID', 'nobody can sign in'], ['ADMIN_EMAILS', 'there is no admin'], ['VAPID_PUBLIC_KEY', 'push notifications are off'], ['ALERTS_KEY', 'the FT Alerts link is off'], ['BREVO_API_KEY', 'the daily report email is off']]) if (!env[k]) console.warn(`${k} is not set — ${why}.`);
 
 /* ---------------- database (one store, each company sees only its own part) ---------------- */
-export const docs = new DocStore({ databaseUrl: env.DATABASE_URL || '', dataDir: env.DATA_DIR || '' });
+let docsTmp;
+try { docsTmp = new DocStore({ databaseUrl: setupProblems.some((x) => x.startsWith('DATABASE_URL')) ? '' : env.DATABASE_URL || '', dataDir: env.DATA_DIR || '' }); }
+catch (e) { setupProblems.push('DATABASE_URL could not be read: ' + e.message); docsTmp = new DocStore({}); }
+export const docs = docsTmp;
 const scopes = scopeAll(docs);                 // company id -> its view of the database
 useDocs(scopes.get('ft'));
 const ENV = new Map(COMPANIES.map((c) => [c.id, { ...envFor(env, c), __docs: scopes.get(c.id), __alertsName: c.alerts }]));
 let dbError = 'Starting up…';
 let pubIdx = new Map();
 async function initDb() {
+  if (setupProblems.length) { dbError = 'Setup problem: ' + setupProblems.join(' '); console.error(dbError); return; }
   try {
     await docs.init();
     pubIdx = new Map(COMPANIES.map((c) => [c.id, pubIndex(scopes.get(c.id))]));
@@ -181,7 +192,8 @@ export const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   const p = url.pathname;
   try {
-    if (p === '/healthz') return send(res, 200, dbError ? 'starting' : 'ok');
+    if (p === '/healthz') return send(res, 200, setupProblems.length ? 'setup problem: ' + setupProblems.join(' ') : dbError ? 'starting' : 'ok');
+    if (setupProblems.length && !p.startsWith('/api/')) return send(res, 503, `This app needs a fix in Render → Environment:\n\n- ${setupProblems.join('\n- ')}\n\nAfter fixing, click Save Changes and wait for the app to restart.`);
 
     // FT Alerts / HT Alerts — the owner's notification app, one per company
     for (const co of [...COMPANIES].sort((a, b) => b.prefix.length - a.prefix.length)) {
