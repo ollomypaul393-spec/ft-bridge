@@ -10,7 +10,7 @@
  */
 import { DocStore } from './db.js';
 
-export const COMPANIES = [
+export const ALL_COMPANIES = [
   {
     id: 'ft', short: 'FT', name: 'Fast Technology Dry Cleaner', brand: 'Fast Technology', tagline: '', prefix: '', alerts: 'FT Alerts', logo: '', logoFull: '', icon: '',
     theme: { nav: '#0e0e0e', accent: '#c9a227', accentLt: '#e6c65c', accentDk: '#b8921f', gold: '#d4af37', soft: '#f8f0d8', link: '#8a6a12', ink: '#111111', bg: '#f7f6f2', line: '#e8e4da' }
@@ -22,6 +22,11 @@ export const COMPANIES = [
     theme: { nav: '#02508f', nav2: '#0368ba', nav3: '#1c7fd0', accent: '#ee7c23', accentLt: '#ff9d4d', accentDk: '#c9620f', gold: '#ffa65c', soft: '#fff1e5', link: '#0368ba', ink: '#ffffff', bg: '#f3f7fc', line: '#dde7f3' }
   }
 ];
+/* ONLY_COMPANY=ht (or ft) on Render makes this copy of the app run that one shop only — a separate app with its own address. */
+const ONLY = String(process.env.ONLY_COMPANY || '').toLowerCase().split(/[,\s]+/).filter(Boolean);
+export const COMPANIES = ONLY.length ? ALL_COMPANIES.filter((c) => ONLY.includes(c.id)) : ALL_COMPANIES;
+if (!COMPANIES.length) throw new Error('ONLY_COMPANY must be one of: ' + ALL_COMPANIES.map((c) => c.id).join(', '));
+export const SINGLE = COMPANIES.length === 1;
 export const byId = (id) => COMPANIES.find((c) => c.id === id) || null;
 export const publicInfo = (c) => ({ id: c.id, short: c.short, name: c.name, brand: c.brand, tagline: c.tagline, logo: c.logo, logoFull: c.logoFull, icon: c.icon, theme: c.theme });
 
@@ -30,7 +35,8 @@ export function envFor(env, c) {
   if (!c.prefix) return env;
   const S = '_' + c.id.toUpperCase();
   const pick = (k) => (env[k + S] !== undefined && env[k + S] !== '' ? env[k + S] : env[k]);
-  return { ...env, ADMIN_EMAILS: pick('ADMIN_EMAILS'), WA_PHONE_ID: env['WA_PHONE_ID' + S] || '', WA_TOKEN: pick('WA_TOKEN'), MAIL_FROM_NAME: env['MAIL_FROM_NAME' + S] || c.name };
+  const alone = String(env.ONLY_COMPANY || '').toLowerCase() === c.id; // its own app: the plain settings are its own
+  return { ...env, ADMIN_EMAILS: pick('ADMIN_EMAILS'), WA_PHONE_ID: env['WA_PHONE_ID' + S] || (alone ? env.WA_PHONE_ID || '' : ''), WA_TOKEN: pick('WA_TOKEN'), MAIL_FROM_NAME: env['MAIL_FROM_NAME' + S] || c.name };
 }
 
 /** One company's view of the shared database: same API as DocStore, names prefixed underneath. */
@@ -38,7 +44,7 @@ export class Scoped {
   constructor(base, c) { this.base = base; this.c = c; this.pre = c.prefix; }
   mine(coll) {
     if (this.pre) return coll.startsWith(this.pre);
-    return !COMPANIES.some((x) => x.prefix && coll.startsWith(x.prefix));
+    return !ALL_COMPANIES.some((x) => x.prefix && coll.startsWith(x.prefix));
   }
   get kind() { return this.base.kind; }
   get(coll, id) { return this.base.get(this.pre + coll, id); }
@@ -54,7 +60,7 @@ export { DocStore };
 /** Re-colours and re-names a page written in Fast Technology's look for another company. */
 export function brandify(html, c) {
   if (!c || c.id === 'ft') return html;
-  const t = c.theme, F = COMPANIES[0].theme, base = c.brand || c.name;
+  const t = c.theme, F = ALL_COMPANIES[0].theme, base = c.brand || c.name;
   let out = String(html);
   if (c.logo) { // real logo picture instead of the letters
     out = out.split('<div class="logo">FT</div>').join(`<div class="logo logo-img"><img src="${c.logo}" alt="${c.short}"></div>`)

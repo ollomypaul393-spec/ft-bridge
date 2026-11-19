@@ -1,5 +1,14 @@
 # Fast Technology & High Technology Dry Cleaners
 
+**Two separate apps from this one project.** On Render, each shop is its own web service built from this repo:
+
+| Render service | `ONLY_COMPANY` | Address |
+|---|---|---|
+| ft-bridge (Fast Technology) | `ft` | https://ft-bridge.onrender.com |
+| high-technology (High Technology) | `ht` | https://high-technology.onrender.com |
+
+Both can use the same Neon `DATABASE_URL` (each shop's data is kept apart), or each its own. Every other setting (ADMIN_EMAILS, WA_PHONE_ID, GOOGLE_CLIENT_ID, keys…) is set separately on each service.
+
 One app, two companies. Each has its own data, staff, tickets (FT0001… / HT0001…), colours (black & gold / navy, white & orange), WhatsApp number, notification app (FT Alerts / HT Alerts) and daily report. Someone who works for both chooses a shop after signing in and can switch from the profile-picture menu.
 
 | Render setting | Fast Technology | High Technology |

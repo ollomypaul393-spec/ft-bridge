@@ -15,7 +15,7 @@
   let coId = ''; try { coId = localStorage.getItem('ft-company') || ''; } catch (e) {}
   // opened through a company's own link (/ht, /ft) or own web address: that company, no picker
   const linkCo = (/^\/(ft|ht)\/?$/i.exec(location.pathname) || [])[1];
-  const LOCK = (CFG.lockCompany || (linkCo ? linkCo.toLowerCase() : '')) || '';
+  const LOCK = (CFG.lockCompany || (linkCo && coOf(linkCo.toLowerCase()) ? linkCo.toLowerCase() : '')) || '';
   if (LOCK) { coId = LOCK; try { localStorage.setItem('ft-company', coId); } catch (e) {} }
   const coOf = (id) => COS.find((c) => c.id === id);
   function applyTheme(c) {

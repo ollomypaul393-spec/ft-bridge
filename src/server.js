@@ -13,7 +13,7 @@ import { callTool, notifyAll, handleRpc } from './mcp.js';
 import { addDevice, recentAlerts, useDocs } from './store.js';
 import { page, serviceWorker, manifest, ICON_SVG } from './alerts-app.js';
 import { DocStore, acquireLease } from './db.js';
-import { COMPANIES, byId, publicInfo, envFor, scopeAll, brandify } from './companies.js';
+import { COMPANIES, SINGLE, byId, publicInfo, envFor, scopeAll, brandify } from './companies.js';
 import { adminEmails, makeToken, readToken, verifyGoogle, roleOf, canRead, canReadColl, canWrite, canUseTool, validColl, validId } from './auth.js';
 import { buildDailyReport, dayStr, localHM } from './report.js';
 import { nextTicket, pubIndex, validPub, orderPage } from './orderpage.js';
@@ -80,7 +80,7 @@ const domainCo = (host) => {
   return null;
 };
 const siteFor = (co, req) => (env['APP_URL_' + co.id.toUpperCase()] || env.APP_URL || 'https://' + req.headers.host).replace(/\/$/, '');
-const alertsPath = (c) => (env.ALERTS_KEY && env.ALERTS_KEY.length >= 16 ? `/alerts/${env.ALERTS_KEY}${c.prefix ? '-' + c.id : ''}` : null);
+const alertsPath = (c) => (env.ALERTS_KEY && env.ALERTS_KEY.length >= 16 ? `/alerts/${env.ALERTS_KEY}${c.prefix && !SINGLE ? '-' + c.id : ''}` : null);
 const alertsLink = (c) => (alertsPath(c) && env.APP_URL ? env.APP_URL.replace(/\/$/, '') + alertsPath(c) : '');
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
@@ -216,16 +216,20 @@ export const server = http.createServer(async (req, res) => {
       const link = `${siteFor(co, req)}/o/${o.pub}`;
       if (qm[1] === 'qr' && qm[3] === '.png') { res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=604800' }); return res.end(qrPng(link)); }
       if (qm[1] === 'qr') return send(res, 200, qrSvg(link), { 'content-type': 'image/svg+xml', 'cache-control': 'public, max-age=604800' });
-      if (!qm[3]) return send(res, 200, brandify(orderPage(o, { shopName: co.name, ...(scopes.get(co.id).get('settings', 'shop') || {}) }, { qrSrc: `/qr/${o.pub}.svg`, tagline: co.tagline, appPath: '/' + co.id }), co), { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
+      if (!qm[3]) return send(res, 200, brandify(orderPage(o, { shopName: co.name, ...(scopes.get(co.id).get('settings', 'shop') || {}) }, { qrSrc: `/qr/${o.pub}.svg`, tagline: co.tagline, appPath: SINGLE ? '/' : '/' + co.id }), co), { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
       return send(res, 404, 'Not found');
     }
 
     // each company's own link: /ht and /ft open that shop directly
     const entry = /^\/(ft|ht)\/?$/i.exec(p);
-    if (entry && req.method === 'GET') { if (p.endsWith('/')) return send(res, 301, '', { location: p.replace(/\/+$/, '') + url.search }); return serveIndex(res, domainCo(req.headers.host) || byId(entry[1].toLowerCase())); }
-    if (req.method === 'GET' && (p === '/' || p === '/index.html')) return serveIndex(res, domainCo(req.headers.host));
+    if (entry && req.method === 'GET') {
+      if (!byId(entry[1].toLowerCase())) return send(res, 302, '', { location: '/' + url.search }); // that shop is a separate app
+      if (p.endsWith('/')) return send(res, 301, '', { location: p.replace(/\/+$/, '') + url.search });
+      return serveIndex(res, domainCo(req.headers.host) || byId(entry[1].toLowerCase()));
+    }
+    if (req.method === 'GET' && (p === '/' || p === '/index.html')) return serveIndex(res, domainCo(req.headers.host) || (SINGLE ? COMPANIES[0] : null));
 
-    if (p === '/config.js') { const dc = domainCo(req.headers.host); return send(res, 200, `window.FT_CONFIG=${JSON.stringify({ googleClientId: env.GOOGLE_CLIENT_ID || '', googleClientIds: Object.fromEntries(COMPANIES.map((c) => [c.id, env['GOOGLE_CLIENT_ID_' + c.id.toUpperCase()] || env.GOOGLE_CLIENT_ID || ''])), companies: COMPANIES.map(publicInfo), lockCompany: dc ? dc.id : '' })};`, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' }); }
+    if (p === '/config.js') { const dc = domainCo(req.headers.host) || (SINGLE ? COMPANIES[0] : null); return send(res, 200, `window.FT_CONFIG=${JSON.stringify({ googleClientId: env.GOOGLE_CLIENT_ID || '', googleClientIds: Object.fromEntries(COMPANIES.map((c) => [c.id, env['GOOGLE_CLIENT_ID_' + c.id.toUpperCase()] || env.GOOGLE_CLIENT_ID || ''])), companies: COMPANIES.map(publicInfo), lockCompany: dc ? dc.id : '' })};`, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-cache' }); }
 
     // optional: keep the Claude connector working if BRIDGE_KEY is set (Fast Technology)
     if (env.BRIDGE_KEY && env.BRIDGE_KEY.length >= 16 && p === `/mcp/${env.BRIDGE_KEY}`) {
@@ -302,7 +306,7 @@ export const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && serveStatic(res, p)) return;
-    if (req.method === 'GET' && !path.extname(p)) return serveIndex(res, domainCo(req.headers.host));
+    if (req.method === 'GET' && !path.extname(p)) return serveIndex(res, domainCo(req.headers.host) || (SINGLE ? COMPANIES[0] : null));
     return send(res, 404, 'Not found');
   } catch (e) {
     if (!res.headersSent) return send(res, e.status || 500, { error: e.status ? e.message : 'Server error' });
