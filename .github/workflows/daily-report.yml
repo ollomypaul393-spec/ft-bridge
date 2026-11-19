@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        site: ['https://ft-bridge.onrender.com', 'https://high-technology.onrender.com']
+        site: ['https://fast-technology.onrender.com', 'https://high-technology.onrender.com']
     steps:
       - name: Wake the app and send the report
         run: |
