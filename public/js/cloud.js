@@ -13,11 +13,11 @@
   /* ---------------- which company (Fast Technology / High Technology) ---------------- */
   const COS = CFG.companies && CFG.companies.length ? CFG.companies : [{ id: 'ft', short: 'FT', name: 'Fast Technology Dry Cleaner', theme: {} }];
   let coId = ''; try { coId = localStorage.getItem('ft-company') || ''; } catch (e) {}
+  const coOf = (id) => COS.find((c) => c.id === id);
   // opened through a company's own link (/ht, /ft) or own web address: that company, no picker
   const linkCo = (/^\/(ft|ht)\/?$/i.exec(location.pathname) || [])[1];
   const LOCK = (CFG.lockCompany || (linkCo && coOf(linkCo.toLowerCase()) ? linkCo.toLowerCase() : '')) || '';
   if (LOCK) { coId = LOCK; try { localStorage.setItem('ft-company', coId); } catch (e) {} }
-  const coOf = (id) => COS.find((c) => c.id === id);
   function applyTheme(c) {
     if (!c) return; window.FT_CO = c; const t = c.theme || {}, r = document.documentElement.style; document.documentElement.dataset.co = c.id;
     if (c.id !== 'ft') {
@@ -46,15 +46,15 @@
   const body = (h) => { mount(); box.classList.remove('gone'); document.getElementById('ftAuthBody').innerHTML = h; };
 
   function showSignIn(note) {
-    body(`<p class="ftauth-msg">${note ? `<span class="ftauth-err">${esc(note)}</span><br>` : ''}Sign in with your Google account. You only do this once on each phone or computer — after that, workers open the app with their PIN.</p><div id="gbtn"></div><p class="ftauth-small">Workers: the owner must first add your Gmail to your staff profile.</p>`);
+    body(`<h2 class="ftauth-h">Welcome</h2><p class="ftauth-msg">Sign in to continue</p>${note ? `<p class="ftauth-err">${esc(note)}</p>` : ''}<div id="gbtn"></div><p class="ftauth-small">Only once on each device — then your PIN.</p>`);
     renderGoogle();
   }
   function showDenied(email) {
-    body(`<p class="ftauth-msg"><span class="ftauth-err">This Google account is not on the staff list yet.</span><br><b>${esc(email || '')}</b></p><p class="ftauth-small">Ask the owner to open <b>Staff</b> → your name → <b>Google email</b>, save this Gmail address there, then tap Try again.</p><div id="gbtn"></div>`);
+    body(`<h2 class="ftauth-h">Not on the staff list</h2><p class="ftauth-email">${esc(email || '')}</p><p class="ftauth-msg">Ask the owner to add this Gmail to your staff profile, then sign in again.</p><div id="gbtn"></div>`);
     renderGoogle();
   }
   function showWaking(n) {
-    body(`<p class="ftauth-msg"><span class="ftauth-spin"></span> Starting the shop server… ${n > 2 ? '<br><span class="ftauth-small">It sleeps when nobody has used it for a while — this takes up to a minute.</span>' : ''}</p>`);
+    body(`<div class="ftauth-wait"><span class="ftauth-spin"></span>${n > 2 ? 'Waking up — this can take up to a minute…' : 'Loading…'}</div>`);
   }
   let gTries = 0;
   function renderGoogle() {
@@ -63,10 +63,10 @@
     if (!clientId) { el.innerHTML = '<p class="ftauth-err">Google sign-in is not set up on the server yet (GOOGLE_CLIENT_ID).</p>'; return; }
     if (!(window.google && google.accounts && google.accounts.id)) { if (gTries++ < 100) setTimeout(renderGoogle, 150); else el.innerHTML = '<p class="ftauth-err">Could not load Google sign-in. Check the internet and reload.</p>'; return; }
     google.accounts.id.initialize({ client_id: clientId, callback: onCredential, auto_select: false, ux_mode: 'popup' });
-    el.innerHTML = ''; google.accounts.id.renderButton(el, { theme: 'filled_black', size: 'large', shape: 'pill', text: 'signin_with', width: 260 });
+    el.innerHTML = ''; google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with', logo_alignment: 'center', width: Math.min(300, el.clientWidth || 300) });
   }
   async function onCredential(resp) {
-    body('<p class="ftauth-msg"><span class="ftauth-spin"></span> Signing in…</p>');
+    body('<div class="ftauth-wait"><span class="ftauth-spin"></span>Signing in…</div>');
     try {
       const r = await fetch('/api/auth/google', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ credential: resp.credential }) });
       const j = await r.json().catch(() => ({}));
@@ -98,7 +98,7 @@
   window.ftNextTicket = async () => (await api('/api/ticket', { method: 'POST' })).ticket;
   async function pickCompany() {
     let list = []; try { list = (await (await fetch('/api/me', { headers: { authorization: 'Bearer ' + token } })).json()).companies || []; } catch (e) {}
-    body(`<p class="ftauth-msg">Which shop do you want to open?</p><div class="copick">${list.map((c) => `<button class="coopt" data-co="${esc(c.id)}" style="--c1:${esc(c.theme.nav)};--c2:${esc(c.theme.accent)}"><span class="cologo${c.logo ? ' img' : ''}">${c.logo ? `<img src="${esc(c.logo)}" alt="">` : esc(c.short)}</span><span><b>${esc(c.name)}</b><small>${c.role === 'admin' ? 'Admin' : 'Staff'}</small></span></button>`).join('')}</div><p class="ftauth-small">You can switch later from your profile picture menu.</p>`);
+    body(`<h2 class="ftauth-h">Choose a shop</h2><div class="copick">${list.map((c) => `<button class="coopt" data-co="${esc(c.id)}" style="--c1:${esc(c.theme.nav)};--c2:${esc(c.theme.accent)}"><span class="cologo${c.logo ? ' img' : ''}">${c.logo ? `<img src="${esc(c.logo)}" alt="">` : esc(c.short)}</span><span><b>${esc(c.name)}</b><small>${c.role === 'admin' ? 'Admin' : 'Staff'}</small></span></button>`).join('')}</div>`);
     document.querySelectorAll('.coopt').forEach((b) => (b.onclick = () => { coId = b.dataset.co; try { localStorage.setItem('ft-company', coId); } catch (e) {} applyTheme(coOf(coId)); const h = document.getElementById('ftAuthHead'); if (h) h.innerHTML = cardHead(coOf(coId)); start(); }));
   }
   window.ftSwitchCompany = (id) => { try { localStorage.setItem('ft-company', id); } catch (e) {} if (CFG.lockCompany) return; location.href = '/' + id; };

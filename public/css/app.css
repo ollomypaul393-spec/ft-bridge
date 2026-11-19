@@ -512,25 +512,28 @@ body.locked main{padding:0}
 .alertslink{display:flex;gap:12px;align-items:center;background:#faf7ec;border:1px solid #e8dcae;border-radius:12px;padding:10px;margin:4px 0 6px}
 .alertslink img{border-radius:8px;background:#fff;padding:4px;flex:none}
 /* ---- sign-in (standalone) ---- */
-#ftAuth{position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at 30% 20%,var(--nav-2,#2a2414),var(--nav) 60%);display:grid;place-items:center;padding:20px;transition:opacity .3s}
+#ftAuth{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:20px;transition:opacity .3s;
+  background:linear-gradient(160deg,var(--nav) 0%,var(--nav-2,#1c1a14) 100%)}
+#ftAuth::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 15% 10%,color-mix(in srgb,var(--accent) 22%,transparent),transparent 45%),radial-gradient(circle at 90% 95%,color-mix(in srgb,var(--accent) 16%,transparent),transparent 40%);pointer-events:none}
 #ftAuth.gone{opacity:0;pointer-events:none;visibility:hidden}
-.ftauth-card{width:100%;max-width:400px;background:#161616;border:1px solid var(--nav-3,#3a3220);border-radius:22px;padding:30px 24px;text-align:center;color:#eee;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.ftauth-logo{width:70px;height:70px;margin:0 auto 14px;border-radius:18px;background:linear-gradient(135deg,var(--accent-lt),var(--accent-dk2));color:var(--accent-ink);font-weight:800;font-size:28px;display:grid;place-items:center}
-.ftauth-card h1{font-size:21px;margin:0 0 14px;font-weight:600}.ftauth-card h1 b{color:var(--gold)}
-.ftauth-msg{color:#ccc;line-height:1.5;margin:0 0 18px}.ftauth-small{color:#8d8d8d;font-size:13px;line-height:1.45;margin:16px 0 0}
-.ftauth-err{color:#ff8a80;font-weight:600}
+.ftauth-card{position:relative;width:100%;max-width:360px;background:#fff;color:#1d1d1f;border-radius:24px;padding:34px 28px 26px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.35)}
+.ftauth-card::before{content:'';position:absolute;left:28px;right:28px;top:0;height:4px;border-radius:0 0 4px 4px;background:var(--accent)}
+.ftauth-logo{width:64px;height:64px;margin:0 auto 12px;border-radius:18px;background:linear-gradient(135deg,var(--accent-lt),var(--accent-dk2));color:var(--accent-ink);font-weight:800;font-size:26px;display:grid;place-items:center}
+.ftauth-card h1{font-size:19px;margin:0 0 22px;font-weight:600;line-height:1.3}.ftauth-card h1 b{color:var(--nav);font-weight:800}
+.ftauth-full{display:block;width:150px;max-width:60%;margin:0 auto 22px}
+.ftauth-h{font-size:22px;font-weight:700;margin:0 0 4px;color:#1d1d1f}
+.ftauth-msg{color:#6b6b70;line-height:1.5;margin:0 0 20px;font-size:15px}
+.ftauth-email{font-weight:600;margin:2px 0 10px;color:#1d1d1f;word-break:break-all}
+.ftauth-small{color:#9a9aa0;font-size:12.5px;line-height:1.45;margin:18px 0 0}
+.ftauth-err{color:#c62828;font-weight:600;font-size:14px;margin:-8px 0 14px}
 #gbtn{display:flex;justify-content:center;min-height:44px}
-.ftauth-spin{display:inline-block;width:14px;height:14px;border:2px solid #555;border-top-color:var(--gold);border-radius:50%;animation:ftspin .8s linear infinite;vertical-align:-2px;margin-right:6px}
+.ftauth-wait{display:flex;align-items:center;justify-content:center;gap:10px;color:#6b6b70;padding:18px 0 8px}
+.ftauth-spin{display:inline-block;width:18px;height:18px;border:2.5px solid #e3e3e6;border-top-color:var(--accent);border-radius:50%;animation:ftspin .8s linear infinite}
 @keyframes ftspin{to{transform:rotate(360deg)}}
-.rqr{text-align:center;margin:4px 0 10px}.rqr img{display:block;margin:0 auto 4px;border:1px solid var(--line);border-radius:12px;padding:6px;background:#fff}
-.phimg{display:block;width:100%;max-width:220px;margin:0 auto 6px;border-radius:8px;background:#fff}
-.scanbox{position:relative;background:#000;border-radius:14px;overflow:hidden;aspect-ratio:1/1;max-width:340px;margin:0 auto 8px}
-.scanbox video{width:100%;height:100%;object-fit:cover;display:block}
-.scanframe{position:absolute;inset:18%;border:3px solid var(--gold);border-radius:16px;box-shadow:0 0 0 999px rgba(0,0,0,.35)}
 /* ---- company picker / switcher ---- */
 .copick{display:grid;gap:10px;margin:4px 0 6px}
-.coopt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid #ffffff22;background:#ffffff0d;color:#eee;border-radius:14px;padding:12px;cursor:pointer}
-.coopt:hover{background:#ffffff1a}.coopt b{display:block;font-size:15px}.coopt small{color:#9a9a9a}
+.coopt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid #e6e6ea;background:#fafafa;color:#1d1d1f;border-radius:14px;padding:12px;cursor:pointer;font:inherit}
+.coopt:hover{border-color:var(--accent);background:#fff}.coopt b{display:block;font-size:15px}.coopt small{color:#8a8a90}
 .cologo{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--c2),var(--c1));flex:none;box-shadow:inset 0 0 0 1px #fff3}
 .cologo.sm{width:22px;height:22px;border-radius:6px;font-size:10px}
 /* ---- real company logo pictures ---- */
@@ -543,5 +546,4 @@ body.locked main{padding:0}
 
 /* ---- High Technology: blue instead of black ---- */
 html[data-co=ht]{--dark:#02508f;--hero:linear-gradient(130deg,#02508f 0%,#0368ba 60%,#1c7fd0 100%)}
-html[data-co=ht] .ftauth-card{background:#033f72;border-color:#1c7fd0}
 html[data-co=ht] .avpop{background:#033f72}
