@@ -40,13 +40,29 @@
   /* ---------------- sign-in screen ---------------- */
   const box = document.createElement('div');
   box.id = 'ftAuth';
-  box.innerHTML = `<div class="ftauth-card"><div id="ftAuthHead">${cardHead(window.FT_CO)}</div><div id="ftAuthBody"><p class="ftauth-msg">Loading…</p></div></div>`;
+  /* laundry icons floating in the background */
+  const ICONS = {
+    hanger: '<path d="M12 4a2 2 0 0 1 2 2c0 .9-.6 1.4-1.2 1.8-.5.3-.8.6-.8 1.2v.5l8.4 5.1c.9.6.5 1.9-.6 1.9H4.2c-1.1 0-1.5-1.3-.6-1.9L12 9.5"/>',
+    shirt: '<path d="M8 3 4 5.5 2.5 9.5l3 1.5V21h13V11l3-1.5L20 5.5 16 3c-.5 1.5-2 2.5-4 2.5S8.5 4.5 8 3Z"/>',
+    drop: '<path d="M12 3s6 6.5 6 10.5A6 6 0 0 1 6 13.5C6 9.5 12 3 12 3Z"/>',
+    spark: '<path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6Z"/>',
+    bubble: '<circle cx="12" cy="12" r="7"/><circle cx="9.5" cy="9.5" r="1.6"/>'
+  };
+  const ico = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${ICONS[k]}</svg>`;
+  const floaters = [['hanger', 8, 14, 46, 0], ['shirt', 82, 10, 40, 3], ['drop', 14, 72, 28, 6], ['bubble', 88, 64, 34, 1.5], ['spark', 48, 6, 22, 4.5], ['shirt', 6, 40, 30, 7], ['hanger', 76, 86, 38, 2], ['bubble', 30, 90, 22, 5], ['spark', 92, 36, 26, 8], ['drop', 60, 92, 24, 3.5]]
+    .map(([k, x, y, s, d]) => `<span class="ftfloat" style="left:${x}%;top:${y}%;width:${s}px;height:${s}px;animation-delay:-${d}s">${ico(k)}</span>`).join('');
+  const sideHtml = (c) => `<div class="ftauth-side">${c.logoFull ? `<img class="ftside-logo" src="${esc(c.logoFull)}" alt="">` : `<div class="ftside-mark">${esc(c.short)}</div>`}
+    <h2>${brandHtml(c)}</h2><p class="ftside-tag">${esc(c.tagline || 'Dry cleaning, washing and ironing.')}</p>
+    <ul><li>${ico('shirt')}<span>Orders, tickets and QR receipts</span></li><li>${ico('spark')}<span>Payments and daily reports</span></li><li>${ico('hanger')}<span>Staff sign in once, then use a PIN</span></li></ul></div>`;
+  const footHtml = (c) => `<div class="ftauth-foot">🔒 Secure sign-in with Google · ${esc(c.name)} · Dodoma</div>`;
+  box.innerHTML = `<div class="ftauth-bg">${floaters}</div><div class="ftauth-wrap"><div id="ftAuthSide">${sideHtml(window.FT_CO)}</div><div class="ftauth-card"><div id="ftAuthHead">${cardHead(window.FT_CO)}</div><div id="ftAuthBody"><div class="ftauth-wait"><span class="ftauth-spin"></span>Loading…</div></div></div></div><div id="ftAuthFoot">${footHtml(window.FT_CO)}</div>`;
   const mount = () => { if (!box.isConnected) document.body.appendChild(box); };
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
   const body = (h) => { mount(); box.classList.remove('gone'); document.getElementById('ftAuthBody').innerHTML = h; };
 
   function showSignIn(note) {
-    body(`<h2 class="ftauth-h">Welcome</h2><p class="ftauth-msg">Sign in to continue</p>${note ? `<p class="ftauth-err">${esc(note)}</p>` : ''}<div id="gbtn"></div><p class="ftauth-small">Only once on each device — then your PIN.</p>`);
+    body(`<h2 class="ftauth-h">Welcome 👋</h2><p class="ftauth-msg">Sign in to open the shop</p>${note ? `<p class="ftauth-err">${esc(note)}</p>` : ''}<div id="gbtn"></div>
+      <div class="ftauth-steps"><div><b>1</b><span>Sign in with Google<small>once on this device</small></span></div><div><b>2</b><span>Enter your PIN<small>every time after</small></span></div></div>`);
     renderGoogle();
   }
   function showDenied(email) {
@@ -99,7 +115,7 @@
   async function pickCompany() {
     let list = []; try { list = (await (await fetch('/api/me', { headers: { authorization: 'Bearer ' + token } })).json()).companies || []; } catch (e) {}
     body(`<h2 class="ftauth-h">Choose a shop</h2><div class="copick">${list.map((c) => `<button class="coopt" data-co="${esc(c.id)}" style="--c1:${esc(c.theme.nav)};--c2:${esc(c.theme.accent)}"><span class="cologo${c.logo ? ' img' : ''}">${c.logo ? `<img src="${esc(c.logo)}" alt="">` : esc(c.short)}</span><span><b>${esc(c.name)}</b><small>${c.role === 'admin' ? 'Admin' : 'Staff'}</small></span></button>`).join('')}</div>`);
-    document.querySelectorAll('.coopt').forEach((b) => (b.onclick = () => { coId = b.dataset.co; try { localStorage.setItem('ft-company', coId); } catch (e) {} applyTheme(coOf(coId)); const h = document.getElementById('ftAuthHead'); if (h) h.innerHTML = cardHead(coOf(coId)); start(); }));
+    document.querySelectorAll('.coopt').forEach((b) => (b.onclick = () => { coId = b.dataset.co; try { localStorage.setItem('ft-company', coId); } catch (e) {} applyTheme(coOf(coId)); const h = document.getElementById('ftAuthHead'); if (h) h.innerHTML = cardHead(coOf(coId)); const sd = document.getElementById('ftAuthSide'); if (sd) sd.innerHTML = sideHtml(coOf(coId)); const ft = document.getElementById('ftAuthFoot'); if (ft) ft.innerHTML = footHtml(coOf(coId)); start(); }));
   }
   window.ftSwitchCompany = (id) => { try { localStorage.setItem('ft-company', id); } catch (e) {} if (CFG.lockCompany) return; location.href = '/' + id; };
   window.ftSignOutNow = () => signOut();
